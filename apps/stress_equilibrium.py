@@ -31,7 +31,7 @@ def stressEquilibrium(
 
 	currentTime = 0.0
 	numberOfVertices = grid.vertices.size
-	displacements = np.repeat(0.0, 2*numberOfVertices)
+	displacements = np.repeat(0.0, grid.dimension*numberOfVertices)
 
 	coords,matrixVals = [], []
 	#---------------------------HELPER FUNCTIONS------------------------------------
@@ -44,19 +44,39 @@ def stressEquilibrium(
 		poissonsRatio = propertyData[region.handle]["PoissonsRatio"]
 
 		lameParameter=2*shearModulus*poissonsRatio/(1-2*poissonsRatio)
-		constitutiveMatrix = np.array([[lameParameter*(1-poissonsRatio)/poissonsRatio,lameParameter 							   ,0			],
-									   [lameParameter								 ,lameParameter*(1-poissonsRatio)/poissonsRatio,0			],
-									   [0			 								 ,0											   ,shearModulus]])
+
+		if region.grid.dimension == 2:
+			constitutiveMatrix = np.array([[lameParameter*(1-poissonsRatio)/poissonsRatio,lameParameter 							   ,0			],
+										   [lameParameter								 ,lameParameter*(1-poissonsRatio)/poissonsRatio,0			],
+										   [0			 								 ,0											   ,shearModulus]])
+		elif region.grid.dimension == 3:
+			constitutiveMatrix = np.array([[2*shearModulus+lameParameter	,lameParameter				 ,lameParameter				  ,0		,0	 ,0],
+										   [lameParameter					,2*shearModulus+lameParameter,lameParameter				  ,0		,0	 ,0],
+										   [lameParameter					,lameParameter				 ,2*shearModulus+lameParameter,0		,0	 ,0],
+										   [0								,0							 ,0							  ,shearModulus,0,0],
+										   [0								,0							 ,0							  ,0,shearModulus,0],
+										   [0								,0							 ,0							  ,0,0,shearModulus]])
+
 		return constitutiveMatrix
 
 	def getTransposedVoigtArea(face):
-		Sx, Sy, _ = face.area.getCoordinates()
-		return np.array([[Sx,0,Sy],[0,Sy,Sx]])
+		Sx, Sy, Sz = face.area.getCoordinates()
+		if face.element.grid.dimension == 2:
+			return np.array([[Sx,0,Sy],[0,Sy,Sx]])
+		elif face.element.grid.dimension == 3:
+			return np.array([[Sx,0,0,Sy,0,Sz],[0,Sy,0,Sx,Sz,0],[0,0,Sz,0,Sy,Sx]])
 
 	def getVoigtGradientOperator(globalDerivatives):
-		Nx,Ny = globalDerivatives
-		zero=np.zeros(Nx.size)
-		return np.array([[Nx,zero],[zero,Ny],[Ny,Nx]])
+		if len(globalDerivatives) == 2:
+			Nx,Ny = globalDerivatives
+			zero=np.zeros(Nx.size)
+			return np.array([[Nx,zero],[zero,Ny],[Ny,Nx]])
+
+		if len(globalDerivatives) == 3:
+			Nx,Ny,Nz = globalDerivatives
+			zero=np.zeros(Nx.size)
+			return np.array([[Nx,zero,zero],[zero,Ny,zero],[zero,zero,Nz],[Ny,Nx,zero],[zero,Nz,Ny],[Nz,zero,Nx]])
+
 
 	def getOuterFaceGlobalDerivatives(outerFace):
 		localDerivatives = outerFace.facet.element.shape.vertexShapeFunctionDerivatives[ outerFace.vertexLocalIndex ]
@@ -67,7 +87,8 @@ def stressEquilibrium(
 
 	U = lambda handle: handle + numberOfVertices * 0
 	V = lambda handle: handle + numberOfVertices * 1
-
+	W = lambda handle: handle + numberOfVertices * 2
+	o=True
 	# Gravity Term
 	for region in grid.regions:
 		density = propertyData[region.handle]["Density"]
@@ -85,8 +106,8 @@ def stressEquilibrium(
 			for innerFace in element.innerFaces:
 				transposedVoigtArea = getTransposedVoigtArea(innerFace)
 				voigtGradientOperator = getVoigtGradientOperator(innerFace.globalDerivatives)
-
 				matrixCoefficient = np.einsum("ij,jk,kmn->imn", transposedVoigtArea, constitutiveMatrix, voigtGradientOperator)
+
 				backwardVertexHandle = element.vertices[element.shape.innerFaceNeighborVertices[innerFace.local][0]].handle
 				forwardVertexHandle = element.vertices[element.shape.innerFaceNeighborVertices[innerFace.local][1]].handle
 				
@@ -151,7 +172,7 @@ def stressEquilibrium(
 
 
 if __name__ == "__main__":
-	model = "workspace/stress_equilibrium_2d/linear"
+	model = "workspace/stress_equilibrium_3d/linear"
 
 	problemData = ProblemData(model)
 
