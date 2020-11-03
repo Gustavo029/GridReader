@@ -1,0 +1,25 @@
+- Analisar matriz
+- Descobrir erro nos fluxos
+- Corrigir plot dos vetores
+
+
+Analisando I' = Matriz * Matriz^-1
+
+para cada linha da matriz:
+	z = soma(linha) - 1
+	l = log10(z)
+# ------ SCIPY -------
+k = 1e+00, max(L) = -12
+k = 1e+03, max(L) = -11
+k = 1e+12, max(L) = -2
+k = 1e+22, max(L) = 7
+
+# ------ NUMPY -------
+k = 1e+00, max(L) = -13
+k = 1e+03, max(L) = -11
+k = 1e+12, max(L) = -2
+k = 1e+22, max(L) = 13
+
+Como mesmo com baixos valores de k os zeros da matriz identidade não eram exatamente zero, mas valores próximos de zero, 
+é mais conveniente analisar a soma das linhas de I'. Para baixos valores de k a soma das linhas de I' se mantém bem próximas a 1 (variando de 1 até 1+1e-12),
+Conforme k aumenta o desvio das somas das linhas de I' de 1 aumenta, e analisamos os valores de log10( soma(linha)-1 ) que deve se aproximar de -inf, ou -16 (já que estamos trabalhando com 16 casas decimais). Para k até 1000 l não passa de -11, mas para k=1e12 l já se aproxima de -2, e para k=1e22 l chega a 7.

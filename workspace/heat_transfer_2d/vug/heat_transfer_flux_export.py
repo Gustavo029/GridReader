@@ -3,32 +3,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), *[os.path.pardir]*3))
 from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver
 import numpy as np
 import pandas as pd
+import scipy as sp
 from scipy import sparse
 import scipy.sparse.linalg
 import time
 
-def heatTransfer(
-		libraryPath,			# PyEFVLib path
-		outputPath,				# Results directory path (Ex.: "results/heat_transfer_2d/...")
-		extension,				# Extension type. Either "csv" or "cgns"
-
-		grid,					# Object of class Grid
-		propertyData,			# List of dictionaries containing the properties
-
-		initialValues,			# Dictionary whose keys are the field names, and values are the field values
-		neumannBoundaries,		# Dictionary whose keys are the field names, and values are objects of the class NeumannBoundaryCondition
-		dirichletBoundaries,	# Dictionary whose keys are the field names, and values are objects of the class DirichletBoundaryCondition
-
-		timeStep,				# Floating point number indicating the timeStep used in the simulation (constant)
-		finalTime,				# The time at which, if reached, the simulation stops. If None, then it is not used.
-		maxNumberOfIterations,	# Number of iterations at which, if reached, the simulation stops. If None, then it is not used.
-		tolerance,				# The value at which, if the maximum difference between field values reach, the simulation stops. If None, then it is not used.
-		
-		fileName="Results",		# File name
-		transient=True,			# If False, the transient term is not added to the equation, and it's solved in one iteration
-		verbosity=True, 			# If False does not print iteration info
-		color=True
-	):
+def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initialValues, neumannBoundaries, dirichletBoundaries, timeStep, finalTime, maxNumberOfIterations, tolerance, fileName="Results", transient=True, verbosity=True, color=True, exportFluxes=True, fluxesOutputPath="fluxes.csv"):
 	#-------------------------SETTINGS----------------------------------------------
 	initialTime = time.time()
 
@@ -37,18 +17,18 @@ def heatTransfer(
 
 	savers = {"cgns": CgnsSaver, "csv": CsvSaver}
 	saver = savers[extension](grid, outputPath, libraryPath, fileName=fileName)
-	fluxDF = pd.DataFrame( {
-		"Element": [elemIdx for elemIdx in range(grid.elements.size) for facetIdx in range(4)],
-		"Facet": grid.elements.size*[0,1,2,3],
-		"X1": [element.vertices[i].x for element in grid.elements for i in [0,1,2,3] ],
-		"Y1": [element.vertices[i].y for element in grid.elements for i in [0,1,2,3] ],
-		"X2": [element.vertices[i].x for element in grid.elements for i in [1,2,3,0] ],
-		"Y2": [element.vertices[i].y for element in grid.elements for i in [1,2,3,0] ]
+	if exportFluxes:
+		fluxDF = pd.DataFrame( {
+			"Element": [elemIdx for elemIdx in range(grid.elements.size) for facetIdx in range(4)],
+			"Facet": grid.elements.size*[0,1,2,3],
+			"X1": [element.vertices[i].x for element in grid.elements for i in [0,1,2,3] ],
+			"Y1": [element.vertices[i].y for element in grid.elements for i in [0,1,2,3] ],
+			"X2": [element.vertices[i].x for element in grid.elements for i in [1,2,3,0] ],
+			"Y2": [element.vertices[i].y for element in grid.elements for i in [1,2,3,0] ]
 
-	} )
-	fluxDF.to_csv("fluxes.csv", index=False)
-	del fluxDF
-
+		} )
+		fluxDF.to_csv("fluxes.csv", index=False)
+		del fluxDF
 	temperatureField = np.repeat(0.0, grid.vertices.size)
 	prevTemperatureField = initialValues["temperature"].copy()
 
@@ -63,9 +43,7 @@ def heatTransfer(
 		coords.append((i,j))
 		matrixVals.append(val)
 
-	#-------------------------------------------------------------------------------
 	#-------------------------SIMULATION MAIN LOOP----------------------------------
-	#-------------------------------------------------------------------------------
 	while not converged:
 		if maxNumberOfIterations != None and iteration > maxNumberOfIterations:
 			break
@@ -134,27 +112,49 @@ def heatTransfer(
 
 		#-------------------------SOLVE LINEAR SYSTEM-------------------------------
 		if iteration == 0:
+			matrixVals = list( 1e-6 * np.array(matrixVals) )
+
 			matrix = sparse.coo_matrix( (matrixVals, zip(*coords)) )
 			matrix = sparse.csc_matrix( matrix )
 			inverseMatrix = sparse.linalg.inv( matrix )
+
+			inverseMatrix = sparse.csc_matrix( 1e6 * inverseMatrix.toarray() )
+			matrix = sparse.csc_matrix( 1e6 * matrix.toarray() )
+			# inverseMatrix = sparse.csc_matrix( np.linalg.inv( matrix.toarray() ) )
+			
+			# ---------------------------------
+			identity = np.matmul(matrix.toarray(), inverseMatrix.toarray())
+			P=[]
+			for line in identity:
+				p = -16 if sum(line)==1 else int(np.log10(abs(sum(line)-1)))
+				P.append(p)
+				# print(p, end=", ")
+				# if p > -4:
+				# 	print(f"---{sum(line)}---")
+			k = propertyData[0]["Conductivity"]
+			print(f"k = {k:.0e}, max(L) = {max(P)}")
+			# ---------------------------------
+		
 		temperatureField = inverseMatrix * independent
 
-		facetFlux = np.zeros((grid.elements.size,4,2))
-		for region in grid.regions:
-			conductivity = propertyData[region.handle]["Conductivity"]
-			for elementIdx, element in enumerate(region.elements):
-				for innerFaceIdx, innerFace in enumerate(element.innerFaces):
-					temperatureVector = np.array([temperatureField[vertex.handle] for vertex in element.vertices])
+		#----------------------------EXPORT FLUXES----------------------------------
+		if exportFluxes:
+			facetFlux = np.zeros((grid.elements.size,4,2))
+			for region in grid.regions:
+				conductivity = propertyData[region.handle]["Conductivity"]
+				for elementIdx, element in enumerate(region.elements):
+					for innerFaceIdx, innerFace in enumerate(element.innerFaces):
+						temperatureVector = np.array([temperatureField[vertex.handle] for vertex in element.vertices])
 
-					heatFlux = -conductivity * np.matmul( innerFace.globalDerivatives, temperatureVector )
+						heatFlux = -conductivity * np.matmul( innerFace.globalDerivatives, temperatureVector )
 
-					facetFlux[elementIdx][innerFaceIdx] = heatFlux
-		fluxDF = pd.read_csv("fluxes.csv")
-		fluxDF[f"time_step_{iteration} - q''x"] = np.array([facetData[0] for elementData in facetFlux for facetData in elementData])
-		fluxDF[f"time_step_{iteration} - q''y"] = np.array([facetData[1] for elementData in facetFlux for facetData in elementData])
-		fluxDF[f"time_step_{iteration} - q''"] = np.array([np.linalg.norm(facetData) for elementData in facetFlux for facetData in elementData])
-		fluxDF.to_csv("fluxes.csv", index=False)
-		del fluxDF
+						facetFlux[elementIdx][innerFaceIdx] = heatFlux
+			fluxDF = pd.read_csv("fluxes.csv")
+			fluxDF[f"time_step_{iteration} - q''x"] = np.array([facetData[0] for elementData in facetFlux for facetData in elementData])
+			fluxDF[f"time_step_{iteration} - q''y"] = np.array([facetData[1] for elementData in facetFlux for facetData in elementData])
+			fluxDF[f"time_step_{iteration} - q''"] = np.array([np.linalg.norm(facetData) for elementData in facetFlux for facetData in elementData])
+			fluxDF.to_csv("fluxes.csv", index=False)
+			del fluxDF
 
 		#-------------------------PRINT ITERATION DATA------------------------------
 		if iteration > 0 and verbosity:
@@ -177,36 +177,36 @@ def heatTransfer(
 		#-------------------------INCREMENT ITERATION-------------------------------
 		iteration += 1   
 
-
-	#-------------------------------------------------------------------------------
 	#-------------------------AFTER END OF MAIN LOOP ITERATION------------------------
-	#-------------------------------------------------------------------------------
-	finalSimulationTime = time.time()
-	if verbosity:
-		print("Ended Simultaion, elapsed {:.2f}s".format(finalSimulationTime-initialTime))
-
 	saver.finalize()
-	if verbosity:
-		print("Saved file: elapsed {:.2f}s".format(time.time()-finalSimulationTime))
-
-		[print, print_purple][color]("\n\tresult: ", end="")
-		print(os.path.realpath(saver.outputPath), "\n")
 
 	return temperatureField
 
 if __name__ == "__main__":
-	model = "workspace/heat_transfer_2d/vug"
-	problemData = ProblemData(model)
-	reader = MSHReader(problemData.paths["Grid"])
-	grid = Grid(reader.getData())
-	problemData.setGrid(grid)
-	problemData.read()
+	def init(size):
+		global model,problemData,reader,grid
+		model = "workspace/heat_transfer_2d/vug"
+		problemData = ProblemData(model)
+		if size==15: problemData.paths["Grid"].replace("30x30","15x15")
+		if size==30: problemData.paths["Grid"].replace("15x15","30x30")
+		reader = MSHReader(problemData.paths["Grid"])
+		grid = Grid(reader.getData())
+		problemData.setGrid(grid)
+		problemData.read()
 
-	K = [1e3, 1e12, 1e22]
+	#---------------------SETTINGS----------------------------------
+	exportFluxes = False
+	twoRegion = False
+	meshSize = 15
+	K = [1, 1e3, 1e12, 1e22]
+	# K = [1, 1e3, 1e12, 1e22]
+	print(f"SETTINGS: exportFluxes={exportFluxes}, twoRegion={twoRegion}, meshSize={meshSize}")
+	verbosity = False
+	#---------------------------------------------------------------
+
 	for k in K:
-	# if True:
-	# 	k=1
-		problemData.propertyData[0]["Conductivity"] = 1
+		init(meshSize)
+		problemData.propertyData[0]["Conductivity"] = 1 if twoRegion else k
 		problemData.propertyData[1]["Conductivity"] = k
 		
 		# open("fluxes.csv", "w").close()
@@ -230,7 +230,9 @@ if __name__ == "__main__":
 			tolerance = problemData.tolerance,
 			
 			transient = not "-p" in sys.argv,
-			verbosity = not "-s" in sys.argv,
+			verbosity = verbosity,
+			exportFluxes = exportFluxes,
+			fluxesOutputPath = "fluxes.csv"
 		)
 
-		os.rename("fluxes.csv", f"fluxos - vec\\results\\k1=1, k2={k:.0e} - 30x30.csv")
+		# os.rename("fluxes.csv", f"fluxos - vec\\results\\k1=1, k2={k:.0e} - 30x30.csv")
