@@ -1,7 +1,7 @@
 import sys,os
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
-from PyEFVLib import MSHReader, Grid, ProblemData, CsvSaver, CgnsSaver, VtuSaver, VtmSaver
+from PyEFVLib import MSHReader, Grid, ProblemData, CsvSaver, CgnsSaver, VtuSaver
 import numpy as np
 from scipy import sparse
 import scipy.sparse.linalg
@@ -26,7 +26,7 @@ def stressEquilibrium(
 	# from PyEFVLib.boundaryConditionPrinter import stressEquilibriumBoundaryConditionsPrinter
 	# stressEquilibriumBoundaryConditionsPrinter(problemData.boundaryConditions)
 
-	savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver}
+	savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver}
 	saver = savers[extension](grid, outputPath, libraryPath, fileName=fileName)
 
 	currentTime = 0.0
@@ -46,9 +46,10 @@ def stressEquilibrium(
 		lameParameter=2*shearModulus*poissonsRatio/(1-2*poissonsRatio)
 
 		if region.grid.dimension == 2:
-			constitutiveMatrix = np.array([[lameParameter*(1-poissonsRatio)/poissonsRatio,lameParameter 							   ,0			],
-										   [lameParameter								 ,lameParameter*(1-poissonsRatio)/poissonsRatio,0			],
-										   [0			 								 ,0											   ,shearModulus]])
+			constitutiveMatrix = np.array([[2*shearModulus+lameParameter ,lameParameter 				,0			 ],
+										   [lameParameter				 ,2*shearModulus+lameParameter 	,0			 ],
+										   [0			 				 ,0								,shearModulus]])
+
 		elif region.grid.dimension == 3:
 			constitutiveMatrix = np.array([[2*shearModulus+lameParameter	,lameParameter				 ,lameParameter				  ,0		,0	 ,0],
 										   [lameParameter					,2*shearModulus+lameParameter,lameParameter				  ,0		,0	 ,0],
@@ -90,14 +91,15 @@ def stressEquilibrium(
 	W = lambda handle: handle + numberOfVertices * 2
 
 	# Gravity Term
-	for region in grid.regions:
-		density = propertyData[region.handle]["Density"]
-		gravity = propertyData[region.handle]["Gravity"]
-		for element in region.elements:
-			local = 0
-			for vertex in element.vertices:
-				independent[V(vertex.handle)] += - density * gravity * element.subelementVolumes[local]
-				local += 1
+	if "-G" in sys.argv:
+		for region in grid.regions:
+			density = propertyData[region.handle]["Density"]
+			gravity = propertyData[region.handle]["Gravity"]
+			for element in region.elements:
+				local = 0
+				for vertex in element.vertices:
+					independent[V(vertex.handle)] += - density * gravity * element.subelementVolumes[local]
+					local += 1
 
 	# Stress Term
 	for region in grid.regions:
@@ -134,6 +136,8 @@ def stressEquilibrium(
 		uBoundaryType = bc["u"].__type__
 		vBoundaryType = bc["v"].__type__
 		wBoundaryType = bc["w"].__type__ if "w" in bc.keys() else None
+
+		print(wBoundaryType)
 
 
 		if uBoundaryType == "NEUMANN":
@@ -193,9 +197,18 @@ def stressEquilibrium(
 
 	return displacements
 
-
 if __name__ == "__main__":
+	if "--help" in sys.argv:
+		print("\npython apps/stress_equilibrium.py workspace_file for opening a described model in workspace\n")
+		print("-g\t for show results graphicaly")
+		print("-s\t for verbosity 0")
+		print("--extension=csv for output file in csv extension\n")
+		print("--extension=cgns for output file in cgns extension\n")
+		print("--extension=vtu for output file in vtu extension\n")
+		exit(0)
+	
 	model = "workspace/stress_equilibrium_2d/linear"
+	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 
 	problemData = ProblemData(model)
 
@@ -203,6 +216,17 @@ if __name__ == "__main__":
 	grid = Grid(reader.getData())
 	problemData.setGrid(grid)
 	problemData.read()
+
+	if not "-s" in sys.argv:
+		for key,path in zip( ["input", "output", "grids"] , [os.path.join(problemData.libraryPath,"workspace",model) , problemData.paths["Output"], problemData.paths["Grid"]] ):
+			print("\t{}\n\t\t{}\n".format(key, path))
+		print("\tsolid")
+		for region in grid.regions:
+			print("\t\t{}".format(region.name))
+			for _property in problemData.propertyData[region.handle].keys():
+				print("\t\t\t{}   : {}".format(_property, problemData.propertyData[region.handle][_property]))
+			print("")
+		print("\n{:>9}\t{:>14}\t{:>14}\t{:>14}".format("Iteration", "CurrentTime", "TimeStep", "Difference"))
 
 	displacements = stressEquilibrium(
 		libraryPath = problemData.libraryPath,
@@ -219,9 +243,7 @@ if __name__ == "__main__":
 		verbosity = not "-s" in sys.argv
 	)
 
-	#-------------------------------------------------------------------------------
 	#-------------------------SHOW RESULTS GRAPHICALY-------------------------------
-	#-------------------------------------------------------------------------------
 	from matplotlib import pyplot as plt, colors, cm
 	def show_1d(fieldValues, name):
 		top_stress = problemData.boundaryConditionData["v"]["North"]["value"]
@@ -244,6 +266,6 @@ if __name__ == "__main__":
 		plt.ylabel("v (mm)")
 		plt.legend()	
 		plt.title(name)
-
-	show_1d(displacements[grid.vertices.size:], "Deslocamento em y")
-	plt.show()
+		plt.show()
+	if "-g" in sys.argv:
+		show_1d(displacements[grid.vertices.size:], "Deslocamento em y")

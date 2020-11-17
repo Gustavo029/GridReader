@@ -1,9 +1,9 @@
 {
     "InitialValue": 0.0,
     "West": {
-        "condition": "NEUMANN",
+        "condition": "DIRICHLET",
         "type": "CONSTANT",
-        "value": 100.0
+        "value": 1e-4
     },
     "East": {
         "condition": "DIRICHLET",

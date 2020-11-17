@@ -113,16 +113,10 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 
 		#-------------------------SOLVE LINEAR SYSTEM-------------------------------
 		if iteration == 0:
-			matrixVals = list( 1e-6 * np.array(matrixVals) )
-
 			matrix = sparse.coo_matrix( (matrixVals, zip(*coords)) )
 			matrix = sparse.csc_matrix( matrix )
 			inverseMatrix = sparse.linalg.inv( matrix )
 
-			inverseMatrix = sparse.csc_matrix( 1e6 * inverseMatrix.toarray() )
-			matrix = sparse.csc_matrix( 1e6 * matrix.toarray() )
-			# inverseMatrix = sparse.csc_matrix( np.linalg.inv( matrix.toarray() ) )
-			
 		temperatureField = inverseMatrix * independent
 
 		#----------------------------EXPORT FLUXES----------------------------------

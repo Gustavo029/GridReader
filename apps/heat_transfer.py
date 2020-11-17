@@ -169,13 +169,14 @@ def heatTransfer(
 
 if __name__ == "__main__":
 	if "--help" in sys.argv:
-		print("\npython apps/heat_transfer_2d.py workspace_file for opening a described model in workspace\n")
+		print("\npython apps/heat_transfer.py workspace_file for opening a described model in workspace\n")
 		print("-p\t for permanent regime (without the accumulation term)")
 		print("-g\t for show results graphicaly")
 		print("-s\t for verbosity 0")
-		print("-1d\t compare 1d analytical with numerical solution along a graph")
-		print("-2d\t show 2d analytical solution colorplot. Useful for really discrepant differences")
+		print("--extension=csv for output file in csv extension\n")
 		print("--extension=cgns for output file in cgns extension\n")
+		print("--extension=vtu for output file in vtu extension\n")
+		print("--extension=vtm for output file in vtm extension\n")
 		exit(0)
 	
 	model = "workspace/heat_transfer_2d/linear"
