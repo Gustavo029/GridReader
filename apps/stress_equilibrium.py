@@ -1,7 +1,7 @@
 import sys,os
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
-from PyEFVLib import MSHReader, Grid, ProblemData, CsvSaver, CgnsSaver
+from PyEFVLib import MSHReader, Grid, ProblemData, CsvSaver, CgnsSaver, VtuSaver, VtmSaver
 import numpy as np
 from scipy import sparse
 import scipy.sparse.linalg
@@ -26,7 +26,7 @@ def stressEquilibrium(
 	# from PyEFVLib.boundaryConditionPrinter import stressEquilibriumBoundaryConditionsPrinter
 	# stressEquilibriumBoundaryConditionsPrinter(problemData.boundaryConditions)
 
-	savers = {"csv": CsvSaver, "cgns": CgnsSaver}
+	savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver}
 	saver = savers[extension](grid, outputPath, libraryPath, fileName=fileName)
 
 	currentTime = 0.0
@@ -182,7 +182,6 @@ def stressEquilibrium(
 	displacements = scipy.sparse.linalg.spsolve(matrix, independent)
 
 	#-------------------------SAVE RESULTS--------------------------------------
-	print(displacements.shape)
 	saver.save('u', displacements[0*numberOfVertices:1*numberOfVertices], currentTime)
 	saver.save('v', displacements[1*numberOfVertices:2*numberOfVertices], currentTime)
 	if grid.dimension == 3:
@@ -190,13 +189,13 @@ def stressEquilibrium(
 	
 	saver.finalize()
 
-	print("\n\t\033[1;35mresult:\033[0m", saver.outputPath, '\n')
+	print("\n\tresult:", saver.outputPath, '\n')
 
 	return displacements
 
 
 if __name__ == "__main__":
-	model = "workspace/stress_equilibrium_3d/linear"
+	model = "workspace/stress_equilibrium_2d/linear"
 
 	problemData = ProblemData(model)
 
@@ -208,7 +207,7 @@ if __name__ == "__main__":
 	displacements = stressEquilibrium(
 		libraryPath = problemData.libraryPath,
 		outputPath = problemData.paths["Output"],
-		extension = "csv" if not "--extension=cgns" in sys.argv else "cgns",
+		extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0],
 		
 		grid 	  = grid,
 		propertyData = problemData.propertyData,

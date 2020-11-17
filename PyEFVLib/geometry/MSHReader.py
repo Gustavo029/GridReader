@@ -19,7 +19,7 @@ class MSHReader:
 	def checkFileVersion(self):
 		fileVersion = float(self.fileData[0][0][0])
 		if fileVersion < 2.0 or fileVersion > 2.2:
-			raise( Exception("MSH version must be ") )
+			raise( Exception("MSH version must be 2.2") )
 
 	def read(self):
 		# This numberOf... are indicated on top of each msh file section
@@ -41,7 +41,7 @@ class MSHReader:
 		self.sectionElements = [ [ e[2] for e in self.connectivitiesFileData if e[1] == section[1] ] for section in self.sectionsFileData]
 
 		shapeCodes = {"line":"12", "triangle":"22", "quadrilateral":"32", "tetrahedron":"42", "pyramid":"72", "prism":"62", "hexagon":"52"}
-		self.shapes = { shape : [ (e[1],e[2]) for e in self.connectivitiesFileData if e[0] == shapeCodes[shape] ] for shape in shapeCodes.keys() }
+		self.shapes = { shape : [ idx for idx, e in enumerate(self.connectivitiesFileData) if e[0] == shapeCodes[shape] ] for shape in shapeCodes.keys() }
 
 		self.gridDimension = max(self.sectionsFileData, key=lambda p:p[0])[0]
 

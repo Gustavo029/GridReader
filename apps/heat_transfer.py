@@ -1,6 +1,6 @@
 import sys,os
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
-from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver
+from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver, VtuSaver, VtmSaver
 import numpy as np
 from scipy import sparse
 import scipy.sparse.linalg
@@ -28,14 +28,13 @@ def heatTransfer(
 		verbosity=True, 			# If False does not print iteration info
 		color=True
 	):
-
 	#-------------------------SETTINGS----------------------------------------------
 	initialTime = time.time()
 
 	dimension = grid.dimension
 	currentTime = 0.0
 
-	savers = {"cgns": CgnsSaver, "csv": CsvSaver}
+	savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver}
 	saver = savers[extension](grid, outputPath, libraryPath, fileName=fileName)
 
 	temperatureField = np.repeat(0.0, grid.vertices.size)
@@ -200,10 +199,10 @@ if __name__ == "__main__":
 			print("")
 		print("\n{:>9}\t{:>14}\t{:>14}\t{:>14}".format("Iteration", "CurrentTime", "TimeStep", "Difference"))
 
-	finalTemperatureField = heatTransfer(
+	heatTransfer(
 		libraryPath = problemData.libraryPath,
 		outputPath = problemData.paths["Output"],
-		extension = "csv" if not "--extension=cgns" in sys.argv else "cgns",
+		extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0],
 		
 		grid 	  = grid,
 		propertyData = problemData.propertyData,
