@@ -108,7 +108,7 @@ def heatTransfer(
 		for bCondition in neumannBoundaries["temperature"]:
 			for facet in bCondition.boundary.facets:
 				for outerFace in facet.outerFaces:
-					independent[outerFace.vertex.handle] -= bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+					independent[outerFace.vertex.handle] += bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
 		# Dirichlet Boundary Condition
 		for bCondition in dirichletBoundaries["temperature"]:
@@ -126,8 +126,7 @@ def heatTransfer(
 			matrix = sparse.coo_matrix( (matrixVals, zip(*coords)) )
 			matrix = sparse.csc_matrix( matrix )
 			inverseMatrix = sparse.linalg.inv( matrix )
-		# temperatureField = inverseMatrix * independent
-		temperatureField = np.linalg.solve(matrix.toarray(), independent)
+		temperatureField = inverseMatrix * independent
 
 		#-------------------------PRINT ITERATION DATA------------------------------
 		if iteration > 0 and verbosity:

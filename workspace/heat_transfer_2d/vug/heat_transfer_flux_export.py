@@ -8,7 +8,7 @@ from scipy import sparse
 import scipy.sparse.linalg
 import time
 
-def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initialValues, neumannBoundaries, dirichletBoundaries, timeStep, finalTime, maxNumberOfIterations, tolerance, fileName="Results", transient=True, verbosity=True, color=True, exportFluxes=True, fluxesOutputPath="fluxes.csv"):
+def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initialValues, neumannBoundaries, dirichletBoundaries, timeStep, finalTime, maxNumberOfIterations, tolerance, fileName="Results", transient=True, verbosity=True, color=True, exportFluxes=True, fluxesOutputPath="FLUXES-EXP.csv"):
 	#-------------------------SETTINGS----------------------------------------------
 	initialTime = time.time()
 
@@ -27,7 +27,7 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 			"Y2": [element.vertices[i].y for element in grid.elements for i in [1,2,3,0] ]
 
 		} )
-		fluxDF.to_csv("fluxes.csv", index=False)
+		fluxDF.to_csv(fluxesOutputPath, index=False)
 		del fluxDF
 	temperatureField = np.repeat(0.0, grid.vertices.size)
 	prevTemperatureField = initialValues["temperature"].copy()
@@ -45,6 +45,7 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 
 	#-------------------------SIMULATION MAIN LOOP----------------------------------
 	while not converged:
+		print(f"timeStep = {iteration}")
 		if maxNumberOfIterations != None and iteration > maxNumberOfIterations:
 			break
 		if iteration > 1 and not transient:
@@ -97,7 +98,7 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 		for bCondition in neumannBoundaries["temperature"]:
 			for facet in bCondition.boundary.facets:
 				for outerFace in facet.outerFaces:
-					independent[outerFace.vertex.handle] -= bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+					independent[outerFace.vertex.handle] += bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
 		# Dirichlet Boundary Condition
 		for bCondition in dirichletBoundaries["temperature"]:
@@ -122,19 +123,6 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 			matrix = sparse.csc_matrix( 1e6 * matrix.toarray() )
 			# inverseMatrix = sparse.csc_matrix( np.linalg.inv( matrix.toarray() ) )
 			
-			# ---------------------------------
-			identity = np.matmul(matrix.toarray(), inverseMatrix.toarray())
-			P=[]
-			for line in identity:
-				p = -16 if sum(line)==1 else int(np.log10(abs(sum(line)-1)))
-				P.append(p)
-				# print(p, end=", ")
-				# if p > -4:
-				# 	print(f"---{sum(line)}---")
-			k = propertyData[0]["Conductivity"]
-			print(f"k = {k:.0e}, max(L) = {max(P)}")
-			# ---------------------------------
-		
 		temperatureField = inverseMatrix * independent
 
 		#----------------------------EXPORT FLUXES----------------------------------
@@ -143,17 +131,19 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 			for region in grid.regions:
 				conductivity = propertyData[region.handle]["Conductivity"]
 				for elementIdx, element in enumerate(region.elements):
+					temperatureVector = np.array([temperatureField[vertex.handle] for vertex in element.vertices])
 					for innerFaceIdx, innerFace in enumerate(element.innerFaces):
-						temperatureVector = np.array([temperatureField[vertex.handle] for vertex in element.vertices])
-
 						heatFlux = -conductivity * np.matmul( innerFace.globalDerivatives, temperatureVector )
+						# Como queremos o fluxo na direção da face, precisamos achar o produto interno do fluxo de calor com a área da face, dividir pelo quadrado da norma da área da face, e multiplicar pelo vetor área da face
+						normFace = innerFace.area.getCoordinates()[:-1] / np.linalg.norm( innerFace.area.getCoordinates()[:-1] )
+						heatFlux = normFace * np.dot(heatFlux, normFace)
 
-						facetFlux[elementIdx][innerFaceIdx] = heatFlux
-			fluxDF = pd.read_csv("fluxes.csv")
+						facetFlux[element.handle][innerFaceIdx] = heatFlux
+			fluxDF = pd.read_csv(fluxesOutputPath)
 			fluxDF[f"time_step_{iteration} - q''x"] = np.array([facetData[0] for elementData in facetFlux for facetData in elementData])
 			fluxDF[f"time_step_{iteration} - q''y"] = np.array([facetData[1] for elementData in facetFlux for facetData in elementData])
 			fluxDF[f"time_step_{iteration} - q''"] = np.array([np.linalg.norm(facetData) for elementData in facetFlux for facetData in elementData])
-			fluxDF.to_csv("fluxes.csv", index=False)
+			fluxDF.to_csv(fluxesOutputPath, index=False)
 			del fluxDF
 
 		#-------------------------PRINT ITERATION DATA------------------------------
@@ -180,59 +170,71 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 	#-------------------------AFTER END OF MAIN LOOP ITERATION------------------------
 	saver.finalize()
 
-	return temperatureField
+	return
 
 if __name__ == "__main__":
 	def init(size):
 		global model,problemData,reader,grid
 		model = "workspace/heat_transfer_2d/vug"
 		problemData = ProblemData(model)
-		if size==15: problemData.paths["Grid"].replace("30x30","15x15")
-		if size==30: problemData.paths["Grid"].replace("15x15","30x30")
+		problemData.paths["Grid"] = "/".join( problemData.paths["Grid"].split(os.path.sep)[:-1] + [ f"vug {size:.0f}x{size:.0f}.msh" ] )
 		reader = MSHReader(problemData.paths["Grid"])
 		grid = Grid(reader.getData())
 		problemData.setGrid(grid)
 		problemData.read()
 
+	def run(exportFluxes,twoRegion,meshSize,K,transient,verbosity):
+		print( f"SETTINGS: exportFluxes = {exportFluxes}, twoRegion = {twoRegion}, meshSize = {meshSize}, K = {K}, transient = {transient}, verbosity = {verbosity}" )
+		for k in K:
+			init(meshSize)
+			problemData.propertyData[0]["Conductivity"] = 1 if twoRegion else k
+			problemData.propertyData[1]["Conductivity"] = k
+			
+			# open("fluxes.csv", "w").close()
+
+			finalTemperatureField = heatTransfer(
+				libraryPath = problemData.libraryPath,
+				outputPath = problemData.paths["Output"],
+				extension = "csv" if not "--extension=cgns" in sys.argv else "cgns",
+				
+				grid 	  = grid,
+				propertyData = problemData.propertyData,
+				
+				# initialValues = problemData.initialValues,
+				initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.vertices.size ) },
+				neumannBoundaries = problemData.neumannBoundaries,
+				dirichletBoundaries = problemData.dirichletBoundaries,
+
+				timeStep  = problemData.timeStep,
+				finalTime = problemData.finalTime,
+				maxNumberOfIterations = problemData.maxNumberOfIterations,
+				tolerance = problemData.tolerance,
+				
+				transient = transient,
+				verbosity = verbosity,
+				exportFluxes = exportFluxes,
+				fluxesOutputPath = "FLUXES-EXP.csv"
+			)
+
+			twoRegionName = f"fluxos - vec\\results\\k1=1, k2={k:.0e} - {meshSize}x{meshSize}.csv"
+			oneRegionName = f"fluxos - vec\\results\\k1=k2={k:.0e} - {meshSize}x{meshSize}.csv"
+			fileName = twoRegionName if twoRegion else oneRegionName
+
+			try: os.remove(fileName)
+			except: pass
+			os.rename("FLUXES-EXP.csv", fileName)
+
 	#---------------------SETTINGS----------------------------------
-	exportFluxes = False
+	exportFluxes = True
 	twoRegion = False
-	meshSize = 15
-	K = [1, 1e3, 1e12, 1e22]
-	# K = [1, 1e3, 1e12, 1e22]
-	print(f"SETTINGS: exportFluxes={exportFluxes}, twoRegion={twoRegion}, meshSize={meshSize}")
+	meshSize = 30
+	# K = [1]
+	K = [1, 1e3, 1e6, 1e12, 1e22]
+	transient = False
 	verbosity = False
-	#---------------------------------------------------------------
 
-	for k in K:
-		init(meshSize)
-		problemData.propertyData[0]["Conductivity"] = 1 if twoRegion else k
-		problemData.propertyData[1]["Conductivity"] = k
-		
-		# open("fluxes.csv", "w").close()
+	run(exportFluxes,twoRegion,meshSize,K,transient,verbosity)
 
-		finalTemperatureField = heatTransfer(
-			libraryPath = problemData.libraryPath,
-			outputPath = problemData.paths["Output"],
-			extension = "csv" if not "--extension=cgns" in sys.argv else "cgns",
-			
-			grid 	  = grid,
-			propertyData = problemData.propertyData,
-			
-			# initialValues = problemData.initialValues,
-			initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.vertices.size ) },
-			neumannBoundaries = problemData.neumannBoundaries,
-			dirichletBoundaries = problemData.dirichletBoundaries,
-
-			timeStep  = problemData.timeStep,
-			finalTime = problemData.finalTime,
-			maxNumberOfIterations = problemData.maxNumberOfIterations,
-			tolerance = problemData.tolerance,
-			
-			transient = not "-p" in sys.argv,
-			verbosity = verbosity,
-			exportFluxes = exportFluxes,
-			fluxesOutputPath = "fluxes.csv"
-		)
-
-		# os.rename("fluxes.csv", f"fluxos - vec\\results\\k1=1, k2={k:.0e} - 30x30.csv")
+	for twoRegion in [True, False]:
+		for meshSize in [15,30]:
+			run(exportFluxes,twoRegion,meshSize,K,transient,verbosity)

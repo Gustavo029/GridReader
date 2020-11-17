@@ -46,4 +46,4 @@ def writeVug(width, height, nxT, nyT, nxI, nyI, outputPath):
 		f.write(text)
 
 if __name__ == "__main__":
-	writeVug(1.0, 1.0, 15, 15, 5, 5, os.path.join( os.path.dirname(__file__), "vug.msh" ))
+	writeVug(1.0, 1.0, 3, 3, 1, 1, os.path.join( os.path.dirname(__file__), "vug.msh" ))

@@ -3,7 +3,7 @@
     "West": {
         "condition": "NEUMANN",
         "type": "CONSTANT",
-        "value": -100
+        "value": 100
     },
     "South": {
         "condition": "NEUMANN",

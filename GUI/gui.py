@@ -33,7 +33,7 @@ class PyEFVLibGUI:
 		self.ttkStyle = ttk.Style()
 		self.ttkStyle.theme_use("winnative")
 		self.root.title("PyEFVLib GUI")
-		self.root.iconbitmap(os.path.join( os.path.dirname(__file__), "icon.ico" ))
+		# self.root.iconbitmap(os.path.join( os.path.dirname(__file__), "icon.ico" ))
 		self.root.bind("<Key>", lambda key: self.root.destroy() if key.char=="\x17" else 0) # Close window if Ctrl+W is pressed
 
 		self.HEIGHT, self.WIDTH = (500, 600)

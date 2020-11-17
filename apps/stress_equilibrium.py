@@ -83,12 +83,12 @@ def stressEquilibrium(
 		return outerFace.facet.element.getGlobalDerivatives(localDerivatives)
 
 	#-------------------------ADD TO LINEAR SYSTEM------------------------------
-	independent = np.zeros(2*numberOfVertices)
+	independent = np.zeros(grid.dimension*numberOfVertices)
 
 	U = lambda handle: handle + numberOfVertices * 0
 	V = lambda handle: handle + numberOfVertices * 1
 	W = lambda handle: handle + numberOfVertices * 2
-	o=True
+
 	# Gravity Term
 	for region in grid.regions:
 		density = propertyData[region.handle]["Density"]
@@ -118,6 +118,12 @@ def stressEquilibrium(
 						add( U(neighborVertex), V(vertex.handle), matrixCoefficient[0][1][local] )
 						add( V(neighborVertex), U(vertex.handle), matrixCoefficient[1][0][local] )
 						add( V(neighborVertex), V(vertex.handle), matrixCoefficient[1][1][local] )
+						if grid.dimension == 3:
+							add( W(neighborVertex), W(vertex.handle), matrixCoefficient[2][2][local] )
+							add( U(neighborVertex), W(vertex.handle), matrixCoefficient[0][2][local] )
+							add( V(neighborVertex), W(vertex.handle), matrixCoefficient[1][2][local] )
+							add( W(neighborVertex), U(vertex.handle), matrixCoefficient[2][0][local] )
+							add( W(neighborVertex), V(vertex.handle), matrixCoefficient[2][1][local] )
 
 						matrixCoefficient *= -1
 					local+=1
@@ -127,6 +133,7 @@ def stressEquilibrium(
 		boundary=bc["u"].boundary
 		uBoundaryType = bc["u"].__type__
 		vBoundaryType = bc["v"].__type__
+		wBoundaryType = bc["w"].__type__ if "w" in bc.keys() else None
 
 
 		if uBoundaryType == "NEUMANN":
@@ -139,20 +146,33 @@ def stressEquilibrium(
 				for outerFace in facet.outerFaces:
 					independent[V(outerFace.vertex.handle)] -= bc["v"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
+		if wBoundaryType == "NEUMANN":
+			for facet in boundary.facets:
+				for outerFace in facet.outerFaces:
+					independent[W(outerFace.vertex.handle)] -= bc["w"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+
+
 		if uBoundaryType == "DIRICHLET":
 			for vertex in boundary.vertices:
-				independent[vertex.handle] = bc["u"].getValue(vertex.handle)
-				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != vertex.handle]
-				coords 	   = [coord for coord in coords if coord[0] != vertex.handle]
-				add(vertex.handle, vertex.handle, 1.0)
+				independent[U(vertex.handle)] = bc["u"].getValue(vertex.handle)
+				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != U(vertex.handle)]
+				coords 	   = [coord for coord in coords if coord[0] != U(vertex.handle)]
+				add(U(vertex.handle), U(vertex.handle), 1.0)
 
 
 		if vBoundaryType == "DIRICHLET":
 			for vertex in boundary.vertices:
-				independent[vertex.handle+numberOfVertices] = bc["v"].getValue(vertex.handle)
-				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != vertex.handle+numberOfVertices]
-				coords 	   = [coord for coord in coords if coord[0] != vertex.handle+numberOfVertices]
-				add(vertex.handle+numberOfVertices, vertex.handle+numberOfVertices, 1.0)
+				independent[V(vertex.handle)] = bc["v"].getValue(vertex.handle)
+				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != V(vertex.handle)]
+				coords 	   = [coord for coord in coords if coord[0] != V(vertex.handle)]
+				add(V(vertex.handle), V(vertex.handle), 1.0)
+
+		if wBoundaryType == "DIRICHLET":
+			for vertex in boundary.vertices:
+				independent[W(vertex.handle)] = bc["w"].getValue(vertex.handle)
+				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != W(vertex.handle)]
+				coords 	   = [coord for coord in coords if coord[0] != W(vertex.handle)]
+				add(W(vertex.handle), W(vertex.handle), 1.0)
 
 
 
@@ -162,8 +182,12 @@ def stressEquilibrium(
 	displacements = scipy.sparse.linalg.spsolve(matrix, independent)
 
 	#-------------------------SAVE RESULTS--------------------------------------
-	saver.save('u', displacements[:numberOfVertices], currentTime)
-	saver.save('v', displacements[numberOfVertices:], currentTime)
+	print(displacements.shape)
+	saver.save('u', displacements[0*numberOfVertices:1*numberOfVertices], currentTime)
+	saver.save('v', displacements[1*numberOfVertices:2*numberOfVertices], currentTime)
+	if grid.dimension == 3:
+		saver.save('w', displacements[2*numberOfVertices:3*numberOfVertices], currentTime)
+	
 	saver.finalize()
 
 	print("\n\t\033[1;35mresult:\033[0m", saver.outputPath, '\n')

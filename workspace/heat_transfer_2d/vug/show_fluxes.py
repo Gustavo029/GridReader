@@ -2,8 +2,9 @@ import sys, os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
-def show_fluxes(fileName):
+def show_fluxes(fileName, scatter=False, save=True):
 	data = pd.read_csv(fileName)
 
 	X1 = np.array(data["X1"])
@@ -25,15 +26,17 @@ def show_fluxes(fileName):
 	fig, ax = plt.subplots()
 	fig.canvas.set_window_title(fileName)
 	ax.quiver(X,Y,U,V,C)
-	# ax.scatter(X1,X2,marker=".",color="k")
+	if scatter:
+		ax.scatter(X1,Y1,marker=".",color="k")
 	plt.show()
-	fig.savefig(fileName.replace("csv", "png").replace("results", "images"))
+	if save:
+		fig.savefig(fileName.replace("csv", "png").replace("results", "images"))
 
 
 if __name__ == "__main__":
 	fileName = "fluxes.csv" if len(sys.argv)<2 else sys.argv[1]
-	# show_fluxes(fileName)
+	show_fluxes(fileName, save=True, scatter=True)
 
-	baseDir = "fluxos - vec\\results"
-	for fileName in os.listdir(baseDir):
-		show_fluxes(os.path.join(baseDir, fileName))
+	# baseDir = "fluxos - vec\\results"
+	# for fileName in os.listdir(baseDir):
+	# 	show_fluxes(os.path.join(baseDir, fileName), save=True)
