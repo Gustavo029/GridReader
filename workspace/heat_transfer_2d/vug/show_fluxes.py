@@ -20,12 +20,13 @@ def show_fluxes(fileName, scatter=False, save=True):
 
 	U = np.array(data[ data.columns[-3] ])
 	V = np.array(data[ data.columns[-2] ])
+	zero=np.zeros(U.size)
 
 	C = np.array([np.linalg.norm((x,y)) for (x,y) in zip(X,Y)])
 
 	fig, ax = plt.subplots()
 	fig.canvas.set_window_title(fileName)
-	ax.quiver(X,Y,U,V,C)
+	ax.quiver(X,Y,zero,V,C)
 	if scatter:
 		ax.scatter(X1,Y1,marker=".",color="k")
 	plt.show()
@@ -35,8 +36,8 @@ def show_fluxes(fileName, scatter=False, save=True):
 
 if __name__ == "__main__":
 	fileName = "fluxes.csv" if len(sys.argv)<2 else sys.argv[1]
-	show_fluxes(fileName, save=True, scatter=True)
+	# show_fluxes(fileName, save=True, scatter=True)
 
-	# baseDir = "fluxos - vec\\results"
-	# for fileName in os.listdir(baseDir):
-	# 	show_fluxes(os.path.join(baseDir, fileName), save=True)
+	baseDir = "fluxos - vec\\results"
+	for fileName in os.listdir(baseDir):
+		show_fluxes(os.path.join(baseDir, fileName), save=True)

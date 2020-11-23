@@ -1,6 +1,6 @@
-import sys,os
+import sys,os,shutil
 sys.path.append(os.path.join(os.path.dirname(__file__), *[os.path.pardir]*3))
-from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver
+from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver, VtuSaver, VtmSaver
 import numpy as np
 import pandas as pd
 import scipy as sp
@@ -15,7 +15,7 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 	dimension = grid.dimension
 	currentTime = 0.0
 
-	savers = {"cgns": CgnsSaver, "csv": CsvSaver}
+	savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver}
 	saver = savers[extension](grid, outputPath, libraryPath, fileName=fileName)
 	if exportFluxes:
 		fluxDF = pd.DataFrame( {
@@ -177,41 +177,43 @@ if __name__ == "__main__":
 		problemData.setGrid(grid)
 		problemData.read()
 
-	def run(exportFluxes,twoRegion,meshSize,K,transient,verbosity):
-		print( f"SETTINGS: exportFluxes = {exportFluxes}, twoRegion = {twoRegion}, meshSize = {meshSize}, K = {K}, transient = {transient}, verbosity = {verbosity}" )
-		for k in K:
-			init(meshSize)
-			problemData.propertyData[0]["Conductivity"] = 1 if twoRegion else k
-			problemData.propertyData[1]["Conductivity"] = k
+	def run(exportFluxes,twoRegion,meshSize,k,transient,verbosity,outputPath=None):
+		print( f"SETTINGS: exportFluxes = {exportFluxes}, twoRegion = {twoRegion}, meshSize = {meshSize}, k = {k:.0e}, transient = {transient}, verbosity = {verbosity}" )
+
+		init(meshSize)
+		problemData.propertyData[0]["Conductivity"] = 1 if twoRegion else k
+		problemData.propertyData[1]["Conductivity"] = k
+		if outputPath!=None: problemData.paths["Output"] = outputPath
+
+		# open("fluxes.csv", "w").close()
+
+		finalTemperatureField = heatTransfer(
+			libraryPath = problemData.libraryPath,
+			outputPath = problemData.paths["Output"],
+			extension = "vtm",#"csv" if not "--extension=cgns" in sys.argv else "cgns",
 			
-			# open("fluxes.csv", "w").close()
+			grid 	  = grid,
+			propertyData = problemData.propertyData,
+			
+			# initialValues = problemData.initialValues,
+			initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.vertices.size ) },
+			neumannBoundaries = problemData.neumannBoundaries,
+			dirichletBoundaries = problemData.dirichletBoundaries,
 
-			finalTemperatureField = heatTransfer(
-				libraryPath = problemData.libraryPath,
-				outputPath = problemData.paths["Output"],
-				extension = "csv" if not "--extension=cgns" in sys.argv else "cgns",
-				
-				grid 	  = grid,
-				propertyData = problemData.propertyData,
-				
-				# initialValues = problemData.initialValues,
-				initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.vertices.size ) },
-				neumannBoundaries = problemData.neumannBoundaries,
-				dirichletBoundaries = problemData.dirichletBoundaries,
+			timeStep  = problemData.timeStep,
+			finalTime = problemData.finalTime,
+			maxNumberOfIterations = problemData.maxNumberOfIterations,
+			tolerance = problemData.tolerance,
+			
+			transient = transient,
+			verbosity = verbosity,
+			exportFluxes = exportFluxes,
+			fluxesOutputPath = "FLUXES-EXP.csv"
+		)
 
-				timeStep  = problemData.timeStep,
-				finalTime = problemData.finalTime,
-				maxNumberOfIterations = problemData.maxNumberOfIterations,
-				tolerance = problemData.tolerance,
-				
-				transient = transient,
-				verbosity = verbosity,
-				exportFluxes = exportFluxes,
-				fluxesOutputPath = "FLUXES-EXP.csv"
-			)
-
-			twoRegionName = f"fluxos - vec\\results\\k1=1, k2={k:.0e} - {meshSize}x{meshSize}.csv"
-			oneRegionName = f"fluxos - vec\\results\\k1=k2={k:.0e} - {meshSize}x{meshSize}.csv"
+		if exportFluxes:
+			twoRegionName = f"fluxos - vec\\results\\fluxos-k1=1,k2={k:.0e}-{meshSize}x{meshSize}.csv"
+			oneRegionName = f"fluxos - vec\\results\\fluxos-k1={k:.0e},k2={k:.0e}-{meshSize}x{meshSize}.csv"
 			fileName = twoRegionName if twoRegion else oneRegionName
 
 			try: os.remove(fileName)
@@ -219,16 +221,22 @@ if __name__ == "__main__":
 			os.rename("FLUXES-EXP.csv", fileName)
 
 	#---------------------SETTINGS----------------------------------
+	outputPath = os.path.realpath( os.path.dirname( __file__ ) )
 	exportFluxes = True
-	twoRegion = False
+	twoRegion = True
 	meshSize = 30
 	# K = [1]
-	K = [1, 1e3, 1e6, 1e12, 1e22]
-	transient = False
+	K = [1,1e3,1e12,1e14,1e15,1e16,1e22]
+	transient = True
 	verbosity = False
 
-	run(exportFluxes,twoRegion,meshSize,K,transient,verbosity)
+	# run(exportFluxes,twoRegion,meshSize,K,transient,verbosity)
 
-	for twoRegion in [True, False]:
-		for meshSize in [15,30]:
-			run(exportFluxes,twoRegion,meshSize,K,transient,verbosity)
+	if os.path.isdir("fluxos - vec"): shutil.rmtree("fluxos - vec")
+	os.makedirs("fluxos - vec"); os.makedirs(os.path.join("fluxos - vec","results")); os.makedirs(os.path.join("fluxos - vec","images"))
+
+	for meshSize in [15,30]:
+		for k in K:
+			pass
+			run(exportFluxes,twoRegion,meshSize,k,transient,verbosity)
+			# os.rename("Results.csv", os.path.join("temperatureFields", f"temperatureField-k1=1,k2={k:.0e}-{meshSize}x{meshSize}.csv"))
