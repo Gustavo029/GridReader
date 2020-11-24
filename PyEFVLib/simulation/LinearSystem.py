@@ -1,4 +1,8 @@
-from petsc4py import PETSc
+try:
+	from petsc4py import PETSc
+except:
+	# raise Exception("petsc4py is not avaliable")
+	pass
 import numpy as np
 from scipy.sparse import csr_matrix
 

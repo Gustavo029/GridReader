@@ -1716,30 +1716,31 @@ class HeatTransferSimulator(Simulator):
 		transient = self.numericalSettingsBools[list(self.numericalSettingsOp.keys()).index("Transient")].get()
 
 		f = io.StringIO()		
+
+		solver = heatTransfer("workspace/heat_transfer_2d/linear", solve=False)
+
+		solver.problemData.libraryPath = os.path.join(os.path.dirname(__file__), os.path.pardir)
+		solver.problemData.paths["Output"] = self.outputDir
+		solver.outputFileName = self.outputFilePath
+		solver.outputFormat = "csv"
+		
+		solver.grid = self.grid
+		solver.problemData.propertyData = self.propertyData
+
+		solver.problemData.initialValues["temperature"] = initialValues
+		solver.problemData.neumannBoundaries = neumannBoundaries
+		solver.problemData.dirichletBoundaries = dirichletBoundaries
+
+		solver.problemData.timeStep  = timeStep 
+		solver.problemData.finalTime = finalTime
+		solver.problemData.maxNumberOfIterations = maxNumberOfTimeSteps
+		solver.problemData.tolerance = tolerance
+		
+		solver.transient = transient
+		solver.verbosity = True
+
 		with redirect_stdout(f):
-			print("\n{:>9}\t{:>14}\t{:>14}\t{:>14}".format("Iteration", "CurrentTime", "TimeStep", "Difference"))
-			heatTransfer(
-				libraryPath = os.path.join(os.path.dirname(__file__), os.path.pardir),
-				outputPath = self.outputDir,
-				fileName = self.outputFilePath,
-				extension = "csv",
-				
-				grid 	  = self.grid,
-				propertyData = self.propertyData,
-				
-				initialValues = initialValues,
-				neumannBoundaries = neumannBoundaries,
-				dirichletBoundaries = dirichletBoundaries,
-	 
-				timeStep  = timeStep ,
-				finalTime = finalTime,
-				maxNumberOfIterations = maxNumberOfTimeSteps,
-				tolerance = tolerance,
-				
-				transient = transient,
-				verbosity = True,
-				color=False
-			)
+			solver.solve()
 
 		self.app.post.setOutputTextVar(f)
 
