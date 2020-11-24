@@ -22,7 +22,7 @@ class Point:
 		return Point(self.x/n, self.y/n, self.z/n)
 		
 	def __repr__(self):
-		return "({}, {}, {})".format(self.x, self.y, self.z)
+		return "Point({}, {}, {})".format(self.x, self.y, self.z)
 
 	def getCoordinates(self):
 		return np.array([self.x, self.y, self.z])

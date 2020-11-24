@@ -1,0 +1,16 @@
+{
+	"solid": {
+		"ShearModulus": 2.76e+9,
+		"Compressibility": 0.0,
+		"Porosity": 2.5e-1,
+		"Permeability": 0.0,
+		"BiotCoefficient": 1.0,
+		"PoissonsRatio": 2.5e-1,
+		"Density": 2.7e+3,
+	},
+	"fluid": {
+		"Compressibility": 4.35e-10,
+		"Viscosity": 1.00e-03,
+		"Density": 1000.0,
+	}
+}

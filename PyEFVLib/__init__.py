@@ -16,3 +16,16 @@ from PyEFVLib.simulation.CsvSaver import *
 from PyEFVLib.simulation.VtuSaver import *
 from PyEFVLib.simulation.VtmSaver import *
 from PyEFVLib.simulation.ProblemData import *
+
+INPUT_EXTENSIONS = ["msh"]
+READERS_DICTIONARY = {
+	"msh": MSHReader
+}
+
+def read(filePath):
+	extension = filePath.split('.')[-1]
+
+	if extension not in INPUT_EXTENSIONS:
+		raise Exception("File extension not supported yet! Input your extension sugestion at https://github.com/GustavoExel/PyEFVLib")
+	else:
+		return Grid( READERS_DICTIONARY[ extension ]( filePath ).getData() )

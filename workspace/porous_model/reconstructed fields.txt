@@ -1,0 +1,62 @@
+------------------------------------
+ Fine.msh
+
+3(x^2) + sin(2y)
+Max difference between Fx field = 0.1267, Field range = [0.0265, 5.9727]        | 2.12%
+Max difference between Fy field = 0.1358, Field range = [-0.8162, 1.9999]       | 6.79%
+Max difference between F field = 0.0023, Field range = [0.0112, 3.9689]         | 0.06%
+
+3(x^2) + 4(y^2)
+Max difference between Fx field = 0.1450, Field range = [0.0265, 5.9727]        | 2.43%
+Max difference between Fy field = 0.1319, Field range = [0.0364, 7.9647]        | 1.66%
+Max difference between F field = 0.0041, Field range = [0.0017, 6.8139]         | 0.06%
+
+exp(-x) * sin(y)
+Max difference between Fx field = 0.0237, Field range = [-0.8245, -0.0018]      | 2.87%
+Max difference between Fy field = 0.0226, Field range = [0.2053, 0.9950]        | 2.27%
+Max difference between F field = 0.0003, Field range = [0.0018, 0.8245]         | 0.04%
+------------------------------------
+ 10x10.msh
+
+3(x^2) + sin(2y)
+Max difference between Fx field = 0.1500, Field range = [0.1500, 5.8500]        | 2.56%
+Max difference between Fy field = 0.0998, Field range = [-0.7404, 1.9975]       | 4.99%
+Max difference between F field = 0.0072, Field range = [0.0575, 3.8494]         | 0.19%
+
+3(x^2) + 4(y^2)
+Max difference between Fx field = 0.1500, Field range = [0.1500, 5.8500]        | 2.56%
+Max difference between Fy field = 0.2000, Field range = [0.2000, 7.8000]        | 2.56%
+Max difference between F field = 0.0156, Field range = [0.0100, 6.5100]         | 0.24%
+
+exp(-x) * sin(y)
+Max difference between Fx field = 0.0202, Field range = [-0.7933, -0.0097]      | 2.55%
+Max difference between Fy field = 0.0200, Field range = [0.2170, 0.9741]        | 2.05%
+Max difference between F field = 0.0003, Field range = [0.0097, 0.7933]         | 0.03%
+------------------------------------
+ Hexas.msh
+
+(x^2) + (y^2) + (z^2)
+Max difference between Fx field = 0.0556, Field range = [0.0556, 1.9444]        | 2.86%
+Max difference between Fy field = 0.0556, Field range = [0.0556, 1.9444]        | 2.86%
+Max difference between Fz field = 0.0556, Field range = [0.0556, 1.9444]        | 2.86%
+Max difference between F field = 0.0077, Field range = [0.0046, 2.7824]         | 0.28%
+
+(xy)/z
+Max difference between Fx field = 0.0026, Field range = [0.0141, 0.9459]        | 0.27%
+Max difference between Fy field = 0.0026, Field range = [0.0141, 0.9459]        | 0.27%
+Max difference between Fz field = 0.0440, Field range = [-0.8692, -0.0002]      | 5.06%
+Max difference between F field = 0.0025, Field range = [0.0004, 0.8955]         | 0.28%
+------------------------------------
+ Pyrams.msh
+
+(x^2) + (y^2) + (z^2)
+Max difference between Fx field = 0.0880, Field range = [0.0123, 1.9877]        | 4.43%
+Max difference between Fy field = 0.0880, Field range = [0.0123, 1.9877]        | 4.43%
+Max difference between Fz field = 0.0880, Field range = [0.0123, 1.9877]        | 4.43%
+Max difference between F field = 0.0048, Field range = [0.0034, 2.8309]         | 0.17%
+
+(xy)/z
+Max difference between Fx field = 0.0740, Field range = [0.0031, 0.9699]        | 7.63%
+Max difference between Fy field = 0.0740, Field range = [0.0031, 0.9699]        | 7.63%
+Max difference between Fz field = 0.0648, Field range = [-0.9099, -0.0000]      | 7.13%
+Max difference between F field = 0.0025, Field range = [0.0001, 0.9183]         | 0.27%
