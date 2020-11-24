@@ -1,9 +1,14 @@
 import sys,os
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+<<<<<<< HEAD:apps/heat_transfer.py
 from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver, VtuSaver, VtmSaver
+=======
+from PyEFVLib import MSHReader, Grid, ProblemData, CgnsSaver, CsvSaver
+from PyEFVLib.simulation import LinearSystem as ls
+>>>>>>> herminio:apps/heat_transfer_csr.py
 import numpy as np
 from scipy import sparse
-import scipy.sparse.linalg
+from scipy.sparse.linalg import spsolve
 import time
 
 def heatTransfer(
@@ -22,7 +27,7 @@ def heatTransfer(
 		finalTime,				# The time at which, if reached, the simulation stops. If None, then it is not used.
 		maxNumberOfIterations,	# Number of iterations at which, if reached, the simulation stops. If None, then it is not used.
 		tolerance,				# The value at which, if the maximum difference between field values reach, the simulation stops. If None, then it is not used.
-		
+
 		fileName="Results",		# File name
 		transient=True,			# If False, the transient term is not added to the equation, and it's solved in one iteration
 		verbosity=True, 			# If False does not print iteration info
@@ -40,16 +45,17 @@ def heatTransfer(
 	temperatureField = np.repeat(0.0, grid.vertices.size)
 	prevTemperatureField = initialValues["temperature"].copy()
 
-	coords,matrixVals = [], []
 	difference = 0.0
 	iteration = 0
 	converged = False
 
 	def print_purple(text, end="\n"):
 		print(f"\n\t{text}", end=end)
-	def add(i, j, val):
-		coords.append((i,j))
-		matrixVals.append(val)
+
+
+
+	ls_csr = ls.LinearSystemCSR(grid.stencil, 1)
+	ls_csr.initialize()
 
 	#-------------------------------------------------------------------------------
 	#-------------------------SIMULATION MAIN LOOP----------------------------------
@@ -60,16 +66,14 @@ def heatTransfer(
 		if iteration > 1 and not transient:
 			break
 		#-------------------------ADD TO LINEAR SYSTEM------------------------------
-		independent = np.zeros(grid.vertices.size)
+		ls_csr.restartRHS()
 
 		# Generation Term
 		for region in grid.regions:
 			heatGeneration = propertyData[region.handle]["HeatGeneration"]
 			for element in region.elements:
-				local = 0
-				for vertex in element.vertices:
-					independent[vertex.handle] += element.subelementVolumes[local] * heatGeneration
-					local += 1
+				for local, vertex in enumerate(element.vertices):
+					ls_csr.addValueToRHS(vertex.handle, element.subelementVolumes[local] * heatGeneration)
 
 		# Diffusion Term
 		if iteration == 0:
@@ -80,13 +84,11 @@ def heatTransfer(
 						diffusiveFlux = conductivity * np.matmul( np.transpose(innerFace.globalDerivatives) , innerFace.area.getCoordinates()[:dimension] )
 						backwardVertexHandle = element.vertices[element.shape.innerFaceNeighborVertices[innerFace.local][0]].handle
 						forwardVertexHandle = element.vertices[element.shape.innerFaceNeighborVertices[innerFace.local][1]].handle
-						
-						i=0
-						for vertex in element.vertices:
+
+						for i, vertex in enumerate(element.vertices):
 							coefficient = -1.0 * diffusiveFlux[i]
-							add(backwardVertexHandle, vertex.handle, coefficient)
-							add(forwardVertexHandle, vertex.handle, -coefficient)
-							i+=1
+							ls_csr.addValueToMatrix(backwardVertexHandle, vertex.handle, coefficient)
+							ls_csr.addValueToMatrix(forwardVertexHandle, vertex.handle, -coefficient)
 
 		# Transient Term
 		if transient:	# If user knows that the accumulation term is irrelevant to the problem
@@ -98,34 +100,38 @@ def heatTransfer(
 				for element in region.elements:
 					local = 0
 					for vertex in element.vertices:
-						independent[vertex.handle] += element.subelementVolumes[local] * accumulation * prevTemperatureField[vertex.handle]
+						ls_csr.addValueToRHS(vertex.handle, element.subelementVolumes[local] * accumulation * prevTemperatureField[vertex.handle])
 						if iteration == 0:
-							add(vertex.handle, vertex.handle, element.subelementVolumes[local] * accumulation)						
+							ls_csr.addValueToMatrix(vertex.handle, vertex.handle, element.subelementVolumes[local] * accumulation)
 						local += 1
 
 		# Neumann Boundary Condition
 		for bCondition in neumannBoundaries["temperature"]:
 			for facet in bCondition.boundary.facets:
 				for outerFace in facet.outerFaces:
+<<<<<<< HEAD:apps/heat_transfer.py
 					independent[outerFace.vertex.handle] += bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+=======
+					ls_csr.addValueToRHS(outerFace.vertex.handle, -bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates()))
+>>>>>>> herminio:apps/heat_transfer_csr.py
 
 		# Dirichlet Boundary Condition
 		for bCondition in dirichletBoundaries["temperature"]:
 			for vertex in bCondition.boundary.vertices:
-				independent[vertex.handle] = bCondition.getValue(vertex.handle)
-		if iteration == 0:
-			for bCondition in dirichletBoundaries["temperature"]:
-				for vertex in bCondition.boundary.vertices:
-					matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != vertex.handle]
-					coords 	   = [coord for coord in coords if coord[0] != vertex.handle]
-					add(vertex.handle, vertex.handle, 1.0)
+				ls_csr.setValueToRHS(vertex.handle, bCondition.getValue(vertex.handle))
+				if iteration == 0:
+					ls_csr.matZeroRow(vertex.handle, 1.0)
 
 		#-------------------------SOLVE LINEAR SYSTEM-------------------------------
+<<<<<<< HEAD:apps/heat_transfer.py
 		if iteration == 0:
 			matrix = sparse.coo_matrix( (matrixVals, zip(*coords)) )
 			matrix = sparse.csc_matrix( matrix )
 			inverseMatrix = sparse.linalg.inv( matrix )
 		temperatureField = inverseMatrix * independent
+=======
+		temperatureField = spsolve(ls_csr.matrix, ls_csr.rhs)
+>>>>>>> herminio:apps/heat_transfer_csr.py
 
 		#-------------------------PRINT ITERATION DATA------------------------------
 		if iteration > 0 and verbosity:
@@ -135,8 +141,6 @@ def heatTransfer(
 		currentTime += timeStep
 
 		#-------------------------SAVE RESULTS--------------------------------------
-		# saver.timeSteps	= np.append(saver.timeSteps,  currentTime)
-		# saver.fields  = np.vstack([saver.fields, temperatureField])
 		saver.save("temperature", temperatureField, currentTime)
 
 		#-------------------------CHECK CONVERGENCE---------------------------------
@@ -148,7 +152,7 @@ def heatTransfer(
 		elif iteration > 0 and tolerance != None:
 			converged = difference < tolerance
 		#-------------------------INCREMENT ITERATION-------------------------------
-		iteration += 1   
+		iteration += 1
 
 
 	#-------------------------------------------------------------------------------
@@ -156,16 +160,21 @@ def heatTransfer(
 	#-------------------------------------------------------------------------------
 	finalSimulationTime = time.time()
 	if verbosity:
-		print("Ended Simultaion, elapsed {:.2f}s".format(finalSimulationTime-initialTime))
+		print("Ended Simultaion, elapsed {:.2f}s".format(finalSimulationTime - initialTime))
 
 	saver.finalize()
 	if verbosity:
-		print("Saved file: elapsed {:.2f}s".format(time.time()-finalSimulationTime))
+		print("Saved file: elapsed {:.2f}s".format(time.time() - finalSimulationTime))
 
 		[print, print_purple][color]("\n\tresult: ", end="")
 		print(os.path.realpath(saver.outputPath), "\n")
 
 	return temperatureField
+
+
+
+
+
 
 if __name__ == "__main__":
 	if "--help" in sys.argv:
@@ -178,7 +187,7 @@ if __name__ == "__main__":
 		print("--extension=vtu for output file in vtu extension\n")
 		print("--extension=vtm for output file in vtm extension\n")
 		exit(0)
-	
+
 	model = "workspace/heat_transfer_2d/linear"
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 
@@ -186,6 +195,7 @@ if __name__ == "__main__":
 
 	reader = MSHReader(problemData.paths["Grid"])
 	grid = Grid(reader.getData())
+	grid.buildStencil()
 	problemData.setGrid(grid)
 	problemData.read()
 
@@ -203,11 +213,16 @@ if __name__ == "__main__":
 	heatTransfer(
 		libraryPath = problemData.libraryPath,
 		outputPath = problemData.paths["Output"],
+<<<<<<< HEAD:apps/heat_transfer.py
 		extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0],
 		
+=======
+		extension = "csv" if not "--extension=cgns" in sys.argv else "cgns",
+
+>>>>>>> herminio:apps/heat_transfer_csr.py
 		grid 	  = grid,
 		propertyData = problemData.propertyData,
-		
+
 		# initialValues = problemData.initialValues,
 		initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.vertices.size ) },
 		neumannBoundaries = problemData.neumannBoundaries,
@@ -217,7 +232,7 @@ if __name__ == "__main__":
 		finalTime = problemData.finalTime,
 		maxNumberOfIterations = problemData.maxNumberOfIterations,
 		tolerance = problemData.tolerance,
-		
+
 		transient = not "-p" in sys.argv,
 		verbosity = not "-s" in sys.argv,
 	)

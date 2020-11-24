@@ -20,7 +20,7 @@ class Point:
 
 	def __truediv__(self, n):
 		return Point(self.x/n, self.y/n, self.z/n)
-		
+
 	def __repr__(self):
 		return "Point({}, {}, {})".format(self.x, self.y, self.z)
 
