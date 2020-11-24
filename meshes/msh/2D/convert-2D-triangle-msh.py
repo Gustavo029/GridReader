@@ -18,9 +18,9 @@ for key in msh.cell_data_dict["gmsh:physical"].keys():
 main_mesh = meshio.Mesh(points=msh.points, cells={"triangle": triangle_cells})
 boundary_mesh =meshio.Mesh(points=msh.points, cells={"line": line_cells}, cell_data={"gmsh:physical": [line_data]})
 subdomains_mesh = meshio.Mesh(points=msh.points, cells={"triangle": triangle_cells}, cell_data={"gmsh:physical": [triangle_data]})
-meshio.write("xdmf/" + filename + ".xdmf", main_mesh)
-meshio.write("xdmf/" + filename + "_facets.xdmf", boundary_mesh)
-meshio.write("xdmf/" + filename + "_physical_region.xdmf", subdomains_mesh)
+meshio.write("../../xdmf/" + filename + ".xdmf", main_mesh)
+meshio.write("../../xdmf/" + filename + "_facets.xdmf", boundary_mesh)
+meshio.write("../../xdmf/" + filename + "_physical_region.xdmf", subdomains_mesh)
 zone_list = {'ZoneList': {}}
 for key in msh.field_data.keys():
 	tag = msh.field_data[key][0]
@@ -30,7 +30,7 @@ for key in msh.field_data.keys():
 	else:
 		zone_type = 'wall'
 	zone_list['ZoneList']['Zone' + str(tag)] = {'@type': zone_type, '@name': key}
-file = "xdmf/{}_zone_list.xml".format(filename)
+file = "../../xdmf/{}_zone_list.xml".format(filename)
 f = open(file, "w")
 f.write(xmltodict.unparse(zone_list, pretty=True))
 f.close()

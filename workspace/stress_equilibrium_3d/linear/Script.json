@@ -7,5 +7,5 @@
 
     "Numerical" : "${DIR}/NumericalSettings.json",
 
-    "Grid" : "${LIB}/meshes/3DGeometries/Hexas6x6x6.msh"
+    "Grid" : "${LIB}/meshes/msh/3D/Hexas6x6x6.msh"
 }
