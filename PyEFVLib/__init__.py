@@ -7,6 +7,7 @@ from PyEFVLib.geometry.Shape import *
 from PyEFVLib.geometry.Region import *
 from PyEFVLib.geometry.Facet import *
 from PyEFVLib.geometry.MSHReader import *
+from PyEFVLib.geometry.XDMFReader import *
 from PyEFVLib.geometry.Boundary import *
 from PyEFVLib.geometry.Element import *
 from PyEFVLib.geometry.Grid import *
@@ -16,6 +17,7 @@ from PyEFVLib.simulation.CsvSaver import *
 from PyEFVLib.simulation.VtuSaver import *
 from PyEFVLib.simulation.VtmSaver import *
 from PyEFVLib.simulation.ProblemData import *
+from PyEFVLib.simulation.LinearSystem import *
 
 INPUT_EXTENSIONS = ["msh"]
 READERS_DICTIONARY = {
