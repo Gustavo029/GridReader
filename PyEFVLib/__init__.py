@@ -17,7 +17,7 @@ from PyEFVLib.simulation.CsvSaver import *
 from PyEFVLib.simulation.VtuSaver import *
 from PyEFVLib.simulation.VtmSaver import *
 from PyEFVLib.simulation.ProblemData import *
-from PyEFVLib.simulation.LinearSystem import *
+# from PyEFVLib.simulation.LinearSystem import *
 
 INPUT_EXTENSIONS = ["msh"]
 READERS_DICTIONARY = {
