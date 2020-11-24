@@ -7,5 +7,5 @@
 
     "Numerical" : "${DIR}/NumericalSettings.json",
 
-    "Grid" : "${LIB}/meshes/vug 30x30.msh"
+    "Grid" : "${LIB}/meshes/msh/2D/vug 30x30.msh"
 }
