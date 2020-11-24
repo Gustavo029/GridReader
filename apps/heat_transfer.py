@@ -15,7 +15,7 @@ class HeatTransferSolver(Solver):
 		self.temperatureField = np.repeat(0.0, self.grid.vertices.size)
 		self.prevTemperatureField = self.problemData.initialValues["temperature"]
 		
-		# self.saver.save("temperature", self.prevTemperatureField, self.currentTime)
+		self.saver.save("temperature", self.prevTemperatureField, self.currentTime)
 
 		self.coords,self.matrixVals = [], []
 		self.difference = 0.0
@@ -29,6 +29,7 @@ class HeatTransferSolver(Solver):
 			self.currentTime += self.timeStep
 			self.saveIterationResults()
 			self.checkConvergence()
+			self.prevTemperatureField = self.temperatureField
 			self.iteration += 1
 
 	def add(self, i, j, val):
@@ -140,11 +141,17 @@ class HeatTransferSolver(Solver):
 	def checkConvergence(self):
 		self.converged = False
 		self.difference = max([abs(temp-oldTemp) for temp, oldTemp in zip(self.temperatureField, self.prevTemperatureField)])
-		self.prevTemperatureField = self.temperatureField
+		
 		if self.problemData.finalTime != None and self.currentTime > self.problemData.finalTime:
 			self.converged = True
-		elif self.iteration > 0 and self.tolerance != None:
-			self.converged = self.difference < self.tolerance
+			return
+		if self.iteration > 0 and self.tolerance != None and self.difference < self.tolerance:
+			self.converged = True
+			return
+		if self.problemData.maxNumberOfIterations and self.iteration >= self.problemData.maxNumberOfIterations:
+			self.converged = True
+			return
+
 
 def heatTransfer(workspaceDirectory, solve=True):
 	solver = HeatTransferSolver(workspaceDirectory, outputFileName="Results", outputFormat="csv", transient=True, verbosity=True)

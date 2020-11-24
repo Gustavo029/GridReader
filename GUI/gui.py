@@ -1715,7 +1715,6 @@ class HeatTransferSimulator(Simulator):
 
 		transient = self.numericalSettingsBools[list(self.numericalSettingsOp.keys()).index("Transient")].get()
 
-		f = io.StringIO()		
 
 		solver = heatTransfer("workspace/heat_transfer_2d/linear", solve=False)
 
@@ -1727,7 +1726,7 @@ class HeatTransferSimulator(Simulator):
 		solver.grid = self.grid
 		solver.problemData.propertyData = self.propertyData
 
-		solver.problemData.initialValues["temperature"] = initialValues
+		solver.problemData.initialValues = initialValues
 		solver.problemData.neumannBoundaries = neumannBoundaries
 		solver.problemData.dirichletBoundaries = dirichletBoundaries
 
@@ -1739,6 +1738,7 @@ class HeatTransferSimulator(Simulator):
 		solver.transient = transient
 		solver.verbosity = True
 
+		f = io.StringIO()		
 		with redirect_stdout(f):
 			solver.solve()
 
