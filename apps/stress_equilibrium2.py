@@ -3,12 +3,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 from PyEFVLib import MSHReader, Grid, ProblemData, CsvSaver, CgnsSaver, VtuSaver
 from PyEFVLib import MSHReader, Grid, ProblemData, CsvSaver, CgnsSaver
-from PyEFVLib.simulation import LinearSystem as ls
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 import scipy.sparse.linalg
-
+import pandas as pd
 #-------------------------SETTINGS----------------------------------------------
 def stressEquilibrium(
 		libraryPath,			# PyEFVLib path
@@ -25,7 +24,7 @@ def stressEquilibrium(
 		fileName="Results",		# File name
 		verbosity=True 			# If False does not print iteration info
 	):
-
+	global coords, matrixVals
 	# from PyEFVLib.boundaryConditionPrinter import stressEquilibriumBoundaryConditionsPrinter
 	# stressEquilibriumBoundaryConditionsPrinter(problemData.boundaryConditions)
 
@@ -35,8 +34,14 @@ def stressEquilibrium(
 	currentTime = 0.0
 	numberOfVertices = grid.vertices.size
 	displacements = np.repeat(0.0, grid.dimension*numberOfVertices)
+	matrixVals, coords = [], []
 
 	#---------------------------HELPER FUNCTIONS------------------------------------
+
+	def add(i, j, val):
+		global coords, matrixVals
+		coords.append((i,j))
+		matrixVals.append(val)
 
 
 	def getConstitutiveMatrix(region):
@@ -83,10 +88,12 @@ def stressEquilibrium(
 		localDerivatives = outerFace.facet.element.shape.vertexShapeFunctionDerivatives[ outerFace.vertexLocalIndex ]
 		return outerFace.facet.element.getGlobalDerivatives(localDerivatives)
 
+	def save():
+		I,J = zip(*coords)
+		pd.DataFrame({'I':I,'J':J,'V':matrixVals}).to_csv("matrix.csv", index=False)
+
 	#-------------------------ADD TO LINEAR SYSTEM------------------------------
 	independent = np.zeros(grid.dimension*numberOfVertices)
-	ls_csr = ls.LinearSystemCSR(grid.stencil, 2)
-	ls_csr.initialize()
 
 	U = lambda handle: handle + numberOfVertices * 0
 	V = lambda handle: handle + numberOfVertices * 1
@@ -102,12 +109,6 @@ def stressEquilibrium(
 				for vertex in element.vertices:
 					independent[V(vertex.handle)] += - density * gravity * element.subelementVolumes[local]
 					local += 1
-	for region in grid.regions:
-		density = propertyData[region.handle]["Density"]
-		gravity = propertyData[region.handle]["Gravity"]
-		for element in region.elements:
-			for local, vertex in enumerate(element.vertices):
-				ls_csr.addValueToRHS(V(vertex.handle), - density * gravity * element.subelementVolumes[local])
 
 	# Stress Term
 	for region in grid.regions:
@@ -133,11 +134,6 @@ def stressEquilibrium(
 							add( V(neighborVertex), W(vertex.handle), matrixCoefficient[1][2][local] )
 							add( W(neighborVertex), U(vertex.handle), matrixCoefficient[2][0][local] )
 							add( W(neighborVertex), V(vertex.handle), matrixCoefficient[2][1][local] )
-						ls_csr.addValueToMatrix(U(neighborVertex), U(vertex.handle), matrixCoefficient[0][0][local])
-						ls_csr.addValueToMatrix(U(neighborVertex), V(vertex.handle), matrixCoefficient[0][1][local])
-						ls_csr.addValueToMatrix(V(neighborVertex), U(vertex.handle), matrixCoefficient[1][0][local])
-						ls_csr.addValueToMatrix(V(neighborVertex), V(vertex.handle), matrixCoefficient[1][1][local])
-
 						matrixCoefficient *= -1
 
 	# Boundary Conditions
@@ -147,18 +143,16 @@ def stressEquilibrium(
 		vBoundaryType = bc["v"].__type__
 		wBoundaryType = bc["w"].__type__ if "w" in bc.keys() else None
 
-		print(wBoundaryType)
-
 
 		if uBoundaryType == "NEUMANN":
 			for facet in boundary.facets:
 				for outerFace in facet.outerFaces:
-					ls_csr.addValueToRHS(U(outerFace.vertex.handle), - bc["u"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates()))
+					independent[U(outerFace.vertex.handle)] -= bc["u"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
 		if vBoundaryType == "NEUMANN":
 			for facet in boundary.facets:
 				for outerFace in facet.outerFaces:
-					ls_csr.addValueToRHS(V(outerFace.vertex.handle), - bc["v"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates()))
+					independent[V(outerFace.vertex.handle)] -= bc["v"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
 		if wBoundaryType == "NEUMANN":
 			for facet in boundary.facets:
@@ -172,8 +166,6 @@ def stressEquilibrium(
 				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != U(vertex.handle)]
 				coords 	   = [coord for coord in coords if coord[0] != U(vertex.handle)]
 				add(U(vertex.handle), U(vertex.handle), 1.0)
-				ls_csr.setValueToRHS(U(vertex.handle), bc["u"].getValue(vertex.handle))
-				ls_csr.matZeroRow(U(vertex.handle), 1.0)
 
 
 		if vBoundaryType == "DIRICHLET":
@@ -189,13 +181,13 @@ def stressEquilibrium(
 				matrixVals = [val for coord, val in zip(coords, matrixVals) if coord[0] != W(vertex.handle)]
 				coords 	   = [coord for coord in coords if coord[0] != W(vertex.handle)]
 				add(W(vertex.handle), W(vertex.handle), 1.0)
-				ls_csr.setValueToRHS(V(vertex.handle), bc["v"].getValue(vertex.handle))
-				ls_csr.matZeroRow(V(vertex.handle), 1.0)
 
-
+	save()
 
 	#-------------------------SOLVE LINEAR SYSTEM-------------------------------
-	displacements = spsolve(ls_csr.matrix, ls_csr.rhs)
+	matrix = sparse.csc_matrix( (matrixVals, zip(*coords)) )
+	inverseMatrix = sparse.linalg.inv( matrix )
+	displacements = inverseMatrix * independent
 
 	#-------------------------SAVE RESULTS--------------------------------------
 	saver.save('u', displacements[0*numberOfVertices:1*numberOfVertices], currentTime)

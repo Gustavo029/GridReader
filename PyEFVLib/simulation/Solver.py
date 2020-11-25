@@ -35,10 +35,11 @@ class Solver:
 		self.propertyData = self.problemData.propertyData
 		self.outputPath = self.problemData.paths["Output"]
 
-		savers = {"cgns": CgnsSaver, "csv": CsvSaver}
+		savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver}
 
 		self.saver = savers[self.outputFormat](self.grid, self.outputPath, self.problemData.libraryPath, fileName=self.outputFileName)
 
+		self.numberOfVertices = self.grid.vertices.size
 		self.dimension = self.grid.dimension
 		self.currentTime = 0.0
 		self.timeStep = self.problemData.timeStep
@@ -77,11 +78,11 @@ class Solver:
 class SomeSolver(Solver):
 	def __init__(self, workspaceDirectory, **kwargs):
 		Solver.__init__(self, workspaceDirectory, **kwargs)
+	def init(self);
 	def mainloop(self);
 	def assembleMatrix(self);
 	def addToIndependentVector(self);
 	def solveLinearSystem(self);
 	def saveIterationResults(self);
 	def checkConvergence(self);
-	def save(self);
 """

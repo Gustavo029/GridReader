@@ -1575,21 +1575,23 @@ class SolidMechanicsSimulator(Simulator):
 				self.propertyData[-1][propertyName] = float( self.propertyEntries[region.name][propertyName].get() )
 				self.propertyData[-1][propertyName] = self.unitsConvert[ self.propertyUnitVars[region.name][propertyName].get() ]( self.propertyData[-1][propertyName] )
 
-		stressEquilibrium(
-			libraryPath = os.path.join(os.path.dirname(__file__), os.path.pardir),
-			outputPath = self.outputDir,
-			fileName = self.outputFilePath,
-			extension = "csv",
 
-			grid 	  = self.grid,
-			propertyData = self.propertyData,
+		solver = stressEquilibrium("workspace/stress_equilibrium_2d/linear", solve=False)
 
-			neumannBoundaries = neumannBoundaries,
-			dirichletBoundaries = dirichletBoundaries,
-			boundaryConditions = list(boundaryConditionsDict.values()),
+		solver.gravity = True
+		solver.problemData.libraryPath = os.path.join(os.path.dirname(__file__), os.path.pardir)
+		solver.problemData.paths["Output"] = self.outputDir
+		solver.outputFileName = self.outputFilePath
+		solver.outputFormat = "csv"
+		
+		solver.grid = self.grid
+		solver.problemData.propertyData = self.propertyData
 
-			verbosity=True 
-		)
+		solver.problemData.neumannBoundaries = neumannBoundaries
+		solver.problemData.dirichletBoundaries = dirichletBoundaries
+		solver.problemData.boundaryConditions = list(boundaryConditionsDict.values())
+
+		solver.solve()
 
 		self.app.post.returnToSimulator = True
 

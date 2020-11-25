@@ -18,7 +18,7 @@ class HeatTransferSolver(Solver):
 		self.saver.save("temperature", self.prevTemperatureField, self.currentTime)
 
 		self.coords,self.matrixVals = [], []
-		self.difference = 0.0
+		self.difference=0.0
 
 	def mainloop(self):
 		self.assembleMatrix()
@@ -77,8 +77,7 @@ class HeatTransferSolver(Solver):
 
 		def invertMatrix():
 			# Invert Matrix
-			self.matrix = sparse.coo_matrix( (self.matrixVals, zip(*self.coords)) )
-			self.matrix = sparse.csc_matrix( self.matrix )
+			self.matrix = sparse.csc_matrix( (self.matrixVals, zip(*self.coords)) )
 			self.inverseMatrix = sparse.linalg.inv( self.matrix )
 
 		diffusionTerm()
@@ -118,7 +117,7 @@ class HeatTransferSolver(Solver):
 			for bCondition in self.problemData.neumannBoundaries["temperature"]:
 				for facet in bCondition.boundary.facets:
 					for outerFace in facet.outerFaces:
-						self.independent[outerFace.vertex.handle] -= bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+						self.independent[outerFace.vertex.handle] += bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
 		def dirichletBoundaryCondition():
 			# Dirichlet Boundary Condition
@@ -153,8 +152,8 @@ class HeatTransferSolver(Solver):
 			return
 
 
-def heatTransfer(workspaceDirectory, solve=True):
-	solver = HeatTransferSolver(workspaceDirectory, outputFileName="Results", outputFormat="csv", transient=True, verbosity=True)
+def heatTransfer(workspaceDirectory, solve=True, outputFormat="csv", transient=True):
+	solver = HeatTransferSolver(workspaceDirectory, outputFileName="Results", outputFormat=outputFormat, transient=transient, verbosity=True)
 	if solve:
 		solver.solve()
 	return solver
@@ -162,5 +161,6 @@ def heatTransfer(workspaceDirectory, solve=True):
 if __name__ == "__main__":
 	model = "workspace/heat_transfer_2d/linear"
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
+	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
 
-	heatTransfer(model)
+	heatTransfer(model, outputFormat=extension, transient=not "-p" in sys.argv)
