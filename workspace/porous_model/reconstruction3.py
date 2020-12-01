@@ -159,7 +159,7 @@ def reconstruct3D(grid,Fx,Fy,Fz,Fxx,Fyy,Fzz):
 
 
 if __name__ == "__main__":
-	for meshName in ["Fine.msh", "10x10.msh"]:
+	for meshName in []:#["Fine.msh", "10x10.msh"]:
 		grid = PyEFVLib.read( os.path.join(pyEFVLibPath, "meshes", "msh", "2D", meshName) )
 		print("------------------------------------\n", meshName)
 
@@ -187,7 +187,7 @@ if __name__ == "__main__":
 		print("(-exp(-x) * sin(y) + x, exp(-x) * cos(y))")
 		reconstruct2D(grid,Fx,Fy,Fxx,Fyy)
 
-	for meshName in ["Hexas.msh", "Pyrams.msh"]:
+	for meshName in ["Tetras.msh"]:
 		grid = PyEFVLib.read( os.path.join(pyEFVLibPath, "meshes", "msh", "3D", meshName) )
 		print("------------------------------------\n", meshName)
 		

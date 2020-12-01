@@ -47,11 +47,15 @@ def reconstruct2D(grid,F,Fx,Fy,cplot=False,diff=False,quiver=False):
 
 	i = 0
 	for element in grid.elements:
+		elementFieldVector = np.array( [fieldAtVertices[vertex.handle] for vertex in element.vertices] )
 		for innerFaceIndex, innerFace in enumerate(element.innerFaces):
 			backwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][0] ]
 			forwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][1] ]
 
-			pressureAtIP = fieldAtIP[i]
+			# pressureAtIP = fieldAtIP[i]
+			shapeFunctionValues = element.shape.innerFaceShapeFunctionValues[innerFaceIndex]
+			pressureAtIP = np.dot(elementFieldVector, shapeFunctionValues)
+
 			area = innerFace.area.getCoordinates()[:-1]
 
 			r2GradFieldAtVertices[backwardVertex.handle] += pressureAtIP * area	
