@@ -44,19 +44,15 @@ class PorousModelSolver(Solver):
 		self.assembleGlobalMatrixGeo()
 
 		# Temporal Loop
-		print("aaaaaaaaaaaaaaaaaa")
 		while not self.converged:
-			print("bbbbbbbbbbbbbbbbbb")
 			# Rever essa linha, eu duvido um pouco...
 			self.difference = 2*self.tolerance
 
 			self.pressureField = self.prevPressureField.copy()
 			self.displacements = self.prevDisplacements.copy()
 
-			print("cccccccccccccccccc")
 			# Iterative Loop
 			while self.difference >= self.tolerance:
-				print("ddddddddddddddddd")
 				self.assembleMassVector()
 				self.solveIterativePressureField()
 				self.assembleGeoVector()
@@ -182,11 +178,11 @@ class PorousModelSolver(Solver):
 	def computeLocalMatrixQ(self, element):
 		# Volumetric Deformation Term
 		localMatrixQ = np.zeros( ( element.vertices.size, element.vertices.size * self.dimension ) )
+		biotCoefficient = self.propertyData[element.region.handle]["BiotCoefficient"]
 
-		for innerFace in element.innerFaces:
-			biotCoefficient = self.propertyData[element.region.handle]["BiotCoefficient"]
-
-			coefficients = -(biotCoefficient/self.timeStep) * np.transpose(innerFace.area.getCoordinates()[self.dimension]) * innerFace.globalDerivatives
+		for innerFaceIdx, innerFace in enumerate(element.innerFaces):
+			shapeFunctionValues = element.shape.innerFaceShapeFunctionValues[innerFaceIdx]
+			coefficients = -(biotCoefficient/self.timeStep) * np.array([sj*Ni for Ni in shapeFunctionValues for sj in innerFace.area.getCoordinates()[:self.dimension]])
 
 			backwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][0]
 			forwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][1]
@@ -206,14 +202,14 @@ class PorousModelSolver(Solver):
 		viscosity = self.propertyData[element.region.handle]["Viscosity"]
 
 		for innerFace in element.innerFaces:
-			Gpi = (fluidDensity*permeability/viscosity) * innerFace.area.getCoordinates()[:self.dimension]
+			coefficients = (fluidDensity*permeability/viscosity) * innerFace.area.getCoordinates()[:self.dimension]
 
 			backwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][0]
 			forwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][1]
 
 			for local in range(element.vertices.size):
-				localMatrixG[backwardVertexLocal][local] += Gpi[local]
-				localMatrixG[forwardVertexLocal][local] -= Gpi[local]
+				localMatrixG[backwardVertexLocal][local] += coefficients[local]
+				localMatrixG[forwardVertexLocal][local] -= coefficients[local]
 
 		return localMatrixG
 
