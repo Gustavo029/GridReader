@@ -7,9 +7,9 @@ import scipy.sparse.linalg
 import time
 
 class PorousModelSolver(Solver):
-	def __init__(self, workspaceDirectory, gravity=False, **kwargs):
+	def __init__(self, workspaceDirectory, gravity=False, verbosity=True, **kwargs):
 		# kwargs -> outputFileName, outputFormat, transient, verbosity
-		Solver.__init__(self, workspaceDirectory, **kwargs)
+		Solver.__init__(self, workspaceDirectory, verbosity=True, **kwargs)
 		self.gravity = gravity
 
 	def init(self):
@@ -23,60 +23,64 @@ class PorousModelSolver(Solver):
 		self.displacements = np.repeat(0.0, self.dimension*self.numberOfVertices)		# u_k
 		self.nextDisplacements = np.repeat(0.0, self.dimension*self.numberOfVertices)	# u_(k+1)
 
-		# self.saver.save("pressure", self.prevPressureField, self.currentTime)
-
-		# self.coords,self.matrixVals = [], []
-		# self.difference=0.0
-
 		self.massIndependentVector = np.zeros( self.numberOfVertices )
 		self.geoIndependentVector = np.zeros( 3*self.numberOfVertices )
 
 		self.massMatrixVals, self.massCoords = [], []
 		self.geoMatrixVals,  self.geoCoords  = [], []
 
-		self.matricesDict = {
-			"mass": ( self.massMatrixVals, self.massCoords ),
-			"geo" : ( self.geoMatrixVals,  self.geoCoords ),
-		}
-
 	def mainloop(self):
 		self.assembleGlobalMatrixMass()
 		self.assembleGlobalMatrixGeo()
 
+		self.iteration = 0
+		self.difference = 2*self.tolerance
+
 		# Temporal Loop
 		while not self.converged:
-			# Rever essa linha, eu duvido um pouco...
-			self.difference = 2*self.tolerance
-
 			self.pressureField = self.prevPressureField.copy()
 			self.displacements = self.prevDisplacements.copy()
 
+			self.iterativeDifference = 2*self.tolerance
+
 			# Iterative Loop
-			while self.difference >= self.tolerance:
+			while self.iterativeDifference >= self.tolerance:
 				self.assembleMassVector()
 				self.solveIterativePressureField()
 				self.assembleGeoVector()
 				self.solveIterativeDisplacementsField()
 
-				self.checkIterativeConvergence()
-				# fazer aq mesmo, não chamar uma função...
-				# self.updateIterativeFields2()
+				self.iterativeDifference = max( max( self.nextPressureField - self.pressureField ), max( self.nextDisplacements - self.displacements ) )
+	
+				self.pressureField = self.nextPressureField.copy()
+				self.displacements = self.nextDisplacements.copy()
 
 				self.iteration += 1
-				break
 
-			# fazer aq mesmo, não chamar uma função...
-			# self.updateTemporalFields()
+				if self.iteration >= self.problemData.maxNumberOfIterations:
+					break
+
+			self.difference = max( max( self.nextPressureField - self.prevPressureField ), max( self.nextDisplacements - self.prevDisplacements ) )
+
+			self.prevPressureField = self.nextPressureField.copy()
+			self.prevDisplacements = self.nextDisplacements.copy()
+
+			self.printIterationData()
+
 			self.saveTemporalResults()
-
 			self.currentTime += self.timeStep
-			break
+
+			self.converged = ( self.difference <= self.tolerance ) or ( self.currentTime >= self.problemData.finalTime ) or ( self.iteration >= self.problemData.maxNumberOfIterations )
 
 	# -------------- HELPER FUNCTIONS --------------
 
-	def add(self, i, j, val, matrixName):
-		self.matricesDict[matrixName][0].append(val)
-		self.matricesDict[matrixName][1].append((i,j))
+	def massAdd(self, i, j, val):
+		self.massMatrixVals.append(val)
+		self.massCoords.append((i,j))
+
+	def geoAdd(self, i, j, val):
+		self.geoMatrixVals.append(val)
+		self.geoCoords.append((i,j))
 
 	def getTransposedVoigtArea(self, face):
 		Sx, Sy, Sz = face.area.getCoordinates()
@@ -121,14 +125,15 @@ class PorousModelSolver(Solver):
 	def assembleLocalMatrixMass(self, element, localMatrix):
 		for i in range(element.vertices.size):
 			for j in range(element.vertices.size):
-				self.add( element.vertices[i].handle, element.vertices[j].handle, localMatrix[i][j], "mass" )
+				self.massAdd( element.vertices[i].handle, element.vertices[j].handle, localMatrix[i][j] )
 	
 	def assembleLocalMatrixGeo(self, element, localMatrix):
 		for i in range(element.vertices.size):
 			for j in range(element.vertices.size):
-				self.add( element.vertices[i].handle + 0*self.numberOfVertices, element.vertices[j].handle + 0*self.numberOfVertices, localMatrix[i][j], "geo" )
-				self.add( element.vertices[i].handle + 1*self.numberOfVertices, element.vertices[j].handle + 1*self.numberOfVertices, localMatrix[i][j], "geo" )
-				self.add( element.vertices[i].handle + 2*self.numberOfVertices, element.vertices[j].handle + 2*self.numberOfVertices, localMatrix[i][j], "geo" )
+				self.geoAdd( element.vertices[i].handle + 0*self.numberOfVertices, element.vertices[j].handle + 0*self.numberOfVertices, localMatrix[i][j] )
+				self.geoAdd( element.vertices[i].handle + 1*self.numberOfVertices, element.vertices[j].handle + 1*self.numberOfVertices, localMatrix[i][j] )
+				if self.dimension == 3:
+					self.geoAdd( element.vertices[i].handle + 2*self.numberOfVertices, element.vertices[j].handle + 2*self.numberOfVertices, localMatrix[i][j] )
 
 	def computeLocalMatrixA(self, element):
 		# Accumulation Term
@@ -207,9 +212,9 @@ class PorousModelSolver(Solver):
 			backwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][0]
 			forwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][1]
 
-			for local in range(element.vertices.size):
-				localMatrixG[backwardVertexLocal][local] += coefficients[local]
-				localMatrixG[forwardVertexLocal][local] -= coefficients[local]
+			for c in range(self.dimension):
+				localMatrixG[backwardVertexLocal][c] += coefficients[c]
+				localMatrixG[forwardVertexLocal][c] -= coefficients[c]
 
 		return localMatrixG
 
@@ -236,9 +241,34 @@ class PorousModelSolver(Solver):
 
 		return localMatrixK
 
+	def computeLocalMatrixL(self, element):
+		localMatrixL = np.zeros( ( element.vertices.size * self.dimension, element.vertices.size ) )
+		biotCoefficient = self.propertyData[element.region.handle]["BiotCoefficient"]
+
+		for innerFaceIdx, innerFace in enumerate(element.innerFaces):
+			transposedVoigtArea = self.getTransposedVoigtArea(innerFace)
+
+			shapeFunctionValues = element.shape.innerFaceShapeFunctionValues[innerFaceIdx]
+			zeros = np.zeros(element.vertices.size)
+			identityShapeFunctionMatrix = np.array([ shapeFunctionValues, shapeFunctionValues, shapeFunctionValues, zeros, zeros, zeros ]) if self.dimension == 3 else np.array([shapeFunctionValues, shapeFunctionValues, zeros])
+
+			coefficients = -biotCoefficient * np.matmul( transposedVoigtArea, identityShapeFunctionMatrix )
+
+			backwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][0]
+			forwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][1]
+
+			for c in range( self.dimension ):
+				for local in range( element.vertices.size ):
+					localMatrixL[backwardVertexLocal+c*element.vertices.size][local] += coefficients[c][local]
+					localMatrixL[forwardVertexLocal+c*element.vertices.size][local] -= coefficients[c][local]
+
+		return localMatrixL
+
 	# ----------- END OF HELPER FUNCTIONS -----------
 
 	def assembleGlobalMatrixMass(self):
+		self.massMatrixVals, self.massCoords = [], []
+
 		for element in self.grid.elements:
 			localMatrixA = self.computeLocalMatrixA(element)
 			localMatrixR = self.computeLocalMatrixR(element)
@@ -253,17 +283,24 @@ class PorousModelSolver(Solver):
 			for vertex in bCondition.boundary.vertices:
 				self.massMatrixVals, self.massCoords = zip( *[(val, coord) for coord, val in zip(self.massCoords, self.massMatrixVals) if coord[0] != vertex.handle] )
 				self.massMatrixVals, self.massCoords = list(self.massMatrixVals), list(self.massCoords)
-				self.add(vertex.handle, vertex.handle, 1.0, "mass")
+				self.massAdd(vertex.handle, vertex.handle, 1.0 )
+
+
+		# Invert Mass Matrix
+		self.massMatrix = sparse.csc_matrix( (self.massMatrixVals, zip(*self.massCoords)) )#, shape=(self.numberOfVertices, self.numberOfVertices) )
+		self.inverseMassMatrix = sparse.linalg.inv( self.massMatrix )
 
 	def assembleGlobalMatrixGeo(self):
-		U = lambda handle: handle + self.numberOfVertices * 0
-		V = lambda handle: handle + self.numberOfVertices * 1
-		W = lambda handle: handle + self.numberOfVertices * 2
+		self.geoMatrixVals,  self.geoCoords  = [], []
 
 		for element in self.grid.elements:
 			self.assembleLocalMatrixGeo(element, self.computeLocalMatrixK(element))
 
 		# Boundary Conditions
+		U = lambda handle: handle + self.numberOfVertices * 0
+		V = lambda handle: handle + self.numberOfVertices * 1
+		W = lambda handle: handle + self.numberOfVertices * 2
+
 		for bc in self.problemData.boundaryConditions:
 			boundary=bc["u"].boundary
 			uBoundaryType = bc["u"].__type__
@@ -273,24 +310,27 @@ class PorousModelSolver(Solver):
 			# Dirichlet Boundary Conditions
 			if uBoundaryType == "DIRICHLET":
 				for vertex in boundary.vertices:
-					self.independent[U(vertex.handle)] = bc["u"].getValue(vertex.handle)
-					self.GeoMatrixVals = [val for coord, val in zip(self.GeoCoords, self.GeoMatrixVals) if coord[0] != U(vertex.handle)]
-					self.GeoCoords 	   = [coord for coord in self.GeoCoords if coord[0] != U(vertex.handle)]
-					self.add(U(vertex.handle), U(vertex.handle), 1.0, "geo")
+					self.geoMatrixVals = [val for coord, val in zip(self.geoCoords, self.geoMatrixVals) if coord[0] != U(vertex.handle)]
+					self.geoCoords 	   = [coord for coord in self.geoCoords if coord[0] != U(vertex.handle)]
+					self.geoAdd(U(vertex.handle), U(vertex.handle), 1.0 )
 
 			if vBoundaryType == "DIRICHLET":
 				for vertex in boundary.vertices:
-					self.independent[V(vertex.handle)] = bc["v"].getValue(vertex.handle)
-					self.GeoMatrixVals = [val for coord, val in zip(self.GeoCoords, self.GeoMatrixVals) if coord[0] != V(vertex.handle)]
-					self.GeoCoords 	   = [coord for coord in self.GeoCoords if coord[0] != V(vertex.handle)]
-					self.add(V(vertex.handle), V(vertex.handle), 1.0, "geo")
+					self.geoMatrixVals = [val for coord, val in zip(self.geoCoords, self.geoMatrixVals) if coord[0] != V(vertex.handle)]
+					self.geoCoords 	   = [coord for coord in self.geoCoords if coord[0] != V(vertex.handle)]
+					self.geoAdd(V(vertex.handle), V(vertex.handle), 1.0 )
 
 			if wBoundaryType == "DIRICHLET":
+				print("NOOOOOOO")
 				for vertex in boundary.vertices:
-					self.independent[W(vertex.handle)] = bc["w"].getValue(vertex.handle)
-					self.GeoMatrixVals = [val for coord, val in zip(self.GeoCoords, self.GeoMatrixVals) if coord[0] != W(vertex.handle)]
-					self.GeoCoords 	   = [coord for coord in self.GeoCoords if coord[0] != W(vertex.handle)]
-					self.add(W(vertex.handle), W(vertex.handle), 1.0, "geo")
+					self.geoMatrixVals = [val for coord, val in zip(self.geoCoords, self.geoMatrixVals) if coord[0] != W(vertex.handle)]
+					self.geoCoords 	   = [coord for coord in self.geoCoords if coord[0] != W(vertex.handle)]
+					self.geoAdd(W(vertex.handle), W(vertex.handle), 1.0 )
+
+
+		# Invert Geo Matrix
+		self.geoMatrix = sparse.csc_matrix( (self.geoMatrixVals, zip(*self.geoCoords)), shape=(self.dimension * self.numberOfVertices, self.dimension * self.numberOfVertices) )
+		self.inverseGeoMatrix = sparse.linalg.inv( self.geoMatrix )
 
 	def assembleMassVector(self):
 		self.massIndependentVector = np.zeros( self.numberOfVertices )
@@ -302,10 +342,10 @@ class PorousModelSolver(Solver):
 			localMatrixG = self.computeLocalMatrixG(element)
 
 			# Get pressures and displacements
-			prevElementPressures 	 = [ prevPressureField[vertex.handle] for vertex in element.vertices ]
-			elementPressures 		 = [ pressureField[vertex.handle] for vertex in element.vertices ]
-			prevElementDisplacements = [ prevDisplacements[m+c*self.numberOfVertices] for c in range(self.dimension) for m in range(element.vertices.size) ]
-			elementDisplacements 	 = [ displacements[m+c*self.numberOfVertices] for c in range(self.dimension) for m in range(element.vertices.size) ]
+			prevElementPressures 	 = np.array([ self.prevPressureField[vertex.handle] for vertex in element.vertices ])
+			elementPressures 		 = np.array([ self.pressureField[vertex.handle] for vertex in element.vertices ])
+			prevElementDisplacements = np.array([ self.prevDisplacements[m+c*self.numberOfVertices] for c in range(self.dimension) for m in range(element.vertices.size) ])
+			elementDisplacements 	 = np.array([ self.displacements[m+c*self.numberOfVertices] for c in range(self.dimension) for m in range(element.vertices.size) ])
 
 			coefficients = np.matmul(localMatrixA, prevElementPressures) + np.matmul(localMatrixR, elementPressures - prevElementPressures) + np.matmul(localMatrixQ, prevElementDisplacements - elementDisplacements) + np.matmul(localMatrixG, self.gravityVector)
 
@@ -314,15 +354,16 @@ class PorousModelSolver(Solver):
 				self.massIndependentVector[vertex.handle] = coefficients[local]
 				local += 1
 
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
-		# applyBounndaryConditionsToMassVector()
+		# Dirichlet Boundary Condition
+		for bCondition in self.problemData.dirichletBoundaries["pressure"]:
+			for vertex in bCondition.boundary.vertices:
+				self.massIndependentVector[vertex.handle] = bCondition.getValue(vertex.handle)
+
+		# Neumann Boundary Condition
+		for bCondition in self.problemData.neumannBoundaries["pressure"]:
+			for facet in bCondition.boundary.facets:
+				for outerFace in facet.outerFaces:
+					self.massIndependentVector[outerFace.vertex.handle] += bCondition.getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
 
 	def assembleGeoVector(self):
 		self.geoIndependentVector = np.zeros( self.dimension * self.numberOfVertices )
@@ -335,42 +376,69 @@ class PorousModelSolver(Solver):
 
 			localMatrixL = self.computeLocalMatrixL(element)
 
-			nextElementPressures = [ nextPressureField[vertex.handle] for vertex in element.vertices ]
+			nextElementPressures = [ self.nextPressureField[vertex.handle] for vertex in element.vertices ]
 			coefficients = np.matmul( localMatrixL, nextElementPressures )
 
 			local = 0
 			for vertex in element.vertices:
 				subelementVolume = element.subelementVolumes[local]
-
 				for c in range(self.dimension):
-					self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = density * subelementVolume * self.gravityVector[c] + coefficients[c+local*element.vertices.size]
+					self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = density * subelementVolume * self.gravityVector[c] + coefficients[c+local*self.dimension]
 
 				local += 1
 
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
-		# applyBounndaryConditionsToGeoVector()
+		# Boundary Conditions
+		U = lambda handle: handle + self.numberOfVertices * 0
+		V = lambda handle: handle + self.numberOfVertices * 1
+		W = lambda handle: handle + self.numberOfVertices * 2
 
+		for bc in self.problemData.boundaryConditions:
+			boundary=bc["u"].boundary
+			uBoundaryType = bc["u"].__type__
+			vBoundaryType = bc["v"].__type__
+			wBoundaryType = bc["w"].__type__ if "w" in bc.keys() else None
+
+			# Neumann Boundary Conditions
+			if uBoundaryType == "NEUMANN":
+				for facet in boundary.facets:
+					for outerFace in facet.outerFaces:
+						self.geoIndependentVector[U(outerFace.vertex.handle)] -= bc["u"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+
+			if vBoundaryType == "NEUMANN":
+				for facet in boundary.facets:
+					for outerFace in facet.outerFaces:
+						self.geoIndependentVector[V(outerFace.vertex.handle)] -= bc["v"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+
+			if wBoundaryType == "NEUMANN":
+				for facet in boundary.facets:
+					for outerFace in facet.outerFaces:
+						self.geoIndependentVector[W(outerFace.vertex.handle)] -= bc["w"].getValue(outerFace.handle) * np.linalg.norm(outerFace.area.getCoordinates())
+
+			# Dirichlet Boundary Conditions
+			if uBoundaryType == "DIRICHLET":
+				for vertex in boundary.vertices:
+					self.geoIndependentVector[U(vertex.handle)] = bc["u"].getValue(vertex.handle)
+
+			if vBoundaryType == "DIRICHLET":
+				for vertex in boundary.vertices:
+					self.geoIndependentVector[V(vertex.handle)] = bc["v"].getValue(vertex.handle)
+
+			if wBoundaryType == "DIRICHLET":
+				for vertex in boundary.vertices:
+					self.geoIndependentVector[W(vertex.handle)] = bc["w"].getValue(vertex.handle)
 
 	def solveIterativePressureField(self):
-		pass
+		self.nextPressureField = np.matmul(self.inverseMassMatrix.toarray(), self.massIndependentVector)
 
 	def solveIterativeDisplacementsField(self):
-		pass
-
-	def checkIterativeConvergence(self):
-		pass
+		self.nextDisplacements = np.matmul(self.inverseGeoMatrix.toarray(), self.geoIndependentVector)
 
 	def saveTemporalResults(self):
-		pass
+		self.saver.save("pressure", self.nextPressureField, self.currentTime)
+		self.saver.save("u", self.nextDisplacements[0*self.numberOfVertices:1*self.numberOfVertices], self.currentTime)
+		self.saver.save("v", self.nextDisplacements[1*self.numberOfVertices:2*self.numberOfVertices], self.currentTime)
+		if self.dimension == 3:
+			self.saver.save("w", self.nextDisplacements[2*self.numberOfVertices:3*self.numberOfVertices], self.currentTime)
 
 def porousModel(workspaceDirectory,solve=True,outputFileName="Results",outputFormat="csv",gravity=False,verbosity=False):
 	solver = PorousModelSolver(workspaceDirectory,outputFileName=outputFileName,outputFormat=outputFormat,gravity=gravity,verbosity=verbosity)

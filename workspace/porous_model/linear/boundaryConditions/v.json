@@ -11,13 +11,13 @@
         "value": 0.0
     },
     "South": {
-        "condition": "NEUMANN",
+        "condition": "DIRICHLET",
         "type": "CONSTANT",
         "value": 0.0
     },
     "North": {
         "condition": "NEUMANN",
         "type": "CONSTANT",
-        "value": 0.0
+        "value": -100.0
     }
 }
