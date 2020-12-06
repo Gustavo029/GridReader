@@ -23,11 +23,11 @@ class Solver:
 
 
 	def solve(self):
-		self.settings()			# DEFINED HERE 
-		self.printHeader()		# DEFINED HERE 
+		self.settings()			# DEFINED HERE
+		self.printHeader()		# DEFINED HERE
 		self.init()				# USER DEFINED
 		self.mainloop()			# USER DEFINED
-		self.save()				# DEFINED HERE
+		self.finalizeSaver()	# DEFINED HERE
 
 	def settings(self):
 		self.initialTime = time.time()
@@ -55,8 +55,9 @@ class Solver:
 			print("\tsolid")
 			for region in self.grid.regions:
 				print("\t\t{}".format(region.name))
-				for _property in self.problemData.propertyData[region.handle].keys():
-					print("\t\t\t{}   : {}".format(_property, self.problemData.propertyData[region.handle][_property]))
+				colSize = len(max(self.problemData.propertyData[region.handle].keys(), key=lambda w:len(w)))
+				for propertyName in self.problemData.propertyData[region.handle].keys():
+					print(f"\t\t{propertyName:>{colSize}} : { self.problemData.propertyData[region.handle][propertyName] }")
 				print("")
 			print("\n{:>9}\t{:>14}\t{:>14}\t{:>14}".format("Iteration", "CurrentTime", "TimeStep", "Difference"))
 
@@ -71,7 +72,7 @@ class Solver:
 		if self.verbosity:
 			print("{:>9}\t{:>14.2e}\t{:>14.2e}\t{:>14.2e}".format(self.iteration, self.currentTime, self.timeStep, self.difference))
 
-	def save(self):
+	def finalizeSaver(self):
 		self.saver.finalize()
 
 """

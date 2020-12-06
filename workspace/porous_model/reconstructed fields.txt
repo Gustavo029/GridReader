@@ -1,3 +1,7 @@
+------------------------------------------------------------------------------------------------------------
+--------------------------RECONSTRUÇÃO DOS CAMPOS E GRADIENTES NOS PONTOS-----------------------------------
+------------------------------DE INTEGRAÇÃO USANDO FUNÇÕES DE FORMA-----------------------------------------
+------------------------------------------------------------------------------------------------------------
 ------------------------------------
  Fine.msh
 
@@ -60,3 +64,189 @@ Max difference between Fx field = 0.0740, Field range = [0.0031, 0.9699]        
 Max difference between Fy field = 0.0740, Field range = [0.0031, 0.9699]        | 7.63%
 Max difference between Fz field = 0.0648, Field range = [-0.9099, -0.0000]      | 7.13%
 Max difference between F field = 0.0025, Field range = [0.0001, 0.9183]         | 0.27%
+
+
+
+------------------------------------------------------------------------------------------------------------
+-------------------RECONSTRUÇÃO DOS GRADIENTES NOS VÉRTICES USANDO O SOMATÓRIO DOS--------------------------
+-------------------------VALORES NOS PONTOS DE INTEGRAÇÃO COM A ÁREA DO CONTORNO----------------------------
+------------------------------------------------------------------------------------------------------------
+------------------------------------
+ Fine.msh
+
+3(x^2) + sin(2y)
+
+Shape Functions Reconstruction
+Max difference =   0.1622, Field range = [0.0939, 6.3246]       | 2.56%
+
+Sum of values in the control volume contour
+Max difference =   0.0469, Field range = [0.1888, 6.1627]       | 0.76%
+
+3(x^2) + 4(y^2)
+
+Shape Functions Reconstruction
+Max difference =   0.1878, Field range = [0.0000, 10.0000]      | 1.88%
+
+Sum of values in the control volume contour
+Max difference =   0.0650, Field range = [0.2829, 9.7042]       | 0.67%
+
+exp(-x) * sin(y)
+
+Shape Functions Reconstruction
+Max difference =   0.0248, Field range = [0.3679, 1.0000]       | 2.48%
+
+Sum of values in the control volume contour
+Max difference =   0.0066, Field range = [0.3781, 0.9739]       | 0.68%
+------------------------------------
+ 10x10.msh
+
+3(x^2) + sin(2y)
+
+Shape Functions Reconstruction
+Max difference =  19.3300, Field range = [0.0584, 6.3246]       | 305.63%
+
+Sum of values in the control volume contour
+Max difference =   0.0125, Field range = [0.6028, 5.7447]       | 0.22%
+
+3(x^2) + 4(y^2)
+
+Shape Functions Reconstruction
+Max difference =  28.5000, Field range = [0.0000, 10.0000]      | 285.00%
+
+Sum of values in the control volume contour
+Max difference =   0.0000, Field range = [1.0000, 9.0000]       | 0.00%
+
+exp(-x) * sin(y)
+
+Shape Functions Reconstruction
+Max difference =   0.8911, Field range = [0.3679, 1.0000]       | 89.11%
+
+Sum of values in the control volume contour
+Max difference =   0.0004, Field range = [0.4066, 0.9048]       | 0.04%
+------------------------------------
+ Hexas.msh
+
+(x^2) + (y^2) + (z^2)
+
+Sum of values in the control volume contour
+Max difference =   0.0000, Field range = [0.3849, 3.0792]       | 0.00%
+
+(xy)/z
+
+Sum of values in the control volume contour
+Max difference =   0.0014, Field range = [0.0833, 1.2998]       | 0.11%
+------------------------------------
+ Pyrams.msh
+
+(x^2) + (y^2) + (z^2)
+
+Sum of values in the control volume contour
+Max difference =   0.7152, Field range = [0.1925, 3.2717]       | 21.86%
+
+(xy)/z
+
+Sum of values in the control volume contour
+Max difference =   0.3617, Field range = [0.0404, 1.4973]       | 24.16%
+
+------------------------------------------------------------------------------------------------------------
+-------------------RECONSTRUÇÃO DOS DIVERGENTES NOS VÉRTICES USANDO O SOMATÓRIO DOS--------------------------
+-------------------------VALORES NOS PONTOS DE INTEGRAÇÃO COM A ÁREA DO CONTORNO----------------------------
+------------------------------------------------------------------------------------------------------------
+------------------------------------
+ Fine.msh
+
+__________________
+(x+y, x*y)
+
+Reconstructed values at integration points
+Max difference = 0.0083, Field range = [1.0265, 1.9727] | 0.42%
+
+Analytical values at integration points
+Max difference = 0.0046, Field range = [1.0265, 1.9727] | 0.23%
+
+__________________
+(x^2 + y^2, ln(y) + 1/x)
+
+Reconstructed values at integration points
+Max difference = 0.0173, Field range = [0.5597, 2.9159] | 0.59%
+
+Analytical values at integration points
+Max difference = 0.0084, Field range = [0.5597, 2.9159] | 0.29%
+
+__________________
+(-exp(-x) * sin(y) + x, exp(-x) * cos(y))
+
+Reconstructed values at integration points
+Max difference = 0.0077, Field range = [1.0000, 1.0000] | 0.77%
+
+Analytical values at integration points
+Max difference = 0.0003, Field range = [1.0000, 1.0000] | 0.03%
+------------------------------------
+ 10x10.msh
+
+__________________
+(x+y, x*y)
+
+Reconstructed values at integration points
+Max difference = 0.0000, Field range = [1.1000, 1.9000] | 0.00%
+
+Analytical values at integration points
+Max difference = 0.0000, Field range = [1.1000, 1.9000] | 0.00%
+
+__________________
+(x^2 + y^2, ln(y) + 1/x)
+
+Reconstructed values at integration points
+Max difference = 0.0025, Field range = [0.7263, 2.7091] | 0.09%
+
+Analytical values at integration points
+Max difference = 0.0006, Field range = [0.7263, 2.7091] | 0.02%
+
+__________________
+(-exp(-x) * sin(y) + x, exp(-x) * cos(y))
+
+Reconstructed values at integration points
+Max difference = 0.0006, Field range = [1.0000, 1.0000] | 0.06%
+
+Analytical values at integration points
+Max difference = 0.0001, Field range = [1.0000, 1.0000] | 0.01%
+------------------------------------
+ Hexas.msh
+
+__________________
+(2x, 2y, 2z)
+
+Reconstructed values at integration points
+Max difference = 0.0000, Field range = [6.0000, 6.0000] | 0.00%
+
+Analytical values at integration points
+Max difference = 0.0000, Field range = [6.0000, 6.0000] | 0.00%
+
+__________________
+(y/(z+1), x/(z+1), -xy/(z+1)^2)
+
+Reconstructed values at integration points
+Max difference = 0.0234, Field range = [0.0037, 1.1520] | 2.03%
+
+Analytical values at integration points
+Max difference = 0.0058, Field range = [0.0037, 1.1520] | 0.50%
+------------------------------------
+ Pyrams.msh
+
+__________________
+(2x, 2y, 2z)
+
+Reconstructed values at integration points
+Max difference = 1.8125, Field range = [6.0000, 6.0000] | 30.21%
+
+Analytical values at integration points
+Max difference = 1.8125, Field range = [6.0000, 6.0000] | 30.21%
+
+__________________
+(y/(z+1), x/(z+1), -xy/(z+1)^2)
+
+Reconstructed values at integration points
+Max difference = 0.3058, Field range = [0.0008, 1.5168] | 20.16%
+
+Analytical values at integration points
+Max difference = 0.3156, Field range = [0.0008, 1.5168] | 20.81%

@@ -1,12 +1,12 @@
 {
     "InitialValue": 0.0,
     "West": {
-        "condition": "NEUMANN",
+        "condition": "DIRICHLET",
         "type": "CONSTANT",
         "value": 0.0
     },
     "East": {
-        "condition": "NEUMANN",
+        "condition": "DIRICHLET",
         "type": "CONSTANT",
         "value": 0.0
     },

@@ -77,7 +77,7 @@ class HeatTransferSolver(Solver):
 
 		def invertMatrix():
 			# Invert Matrix
-			self.matrix = sparse.csc_matrix( (self.matrixVals, zip(*self.coords)) )
+			self.matrix = sparse.csc_matrix( (self.matrixVals, zip(*self.coords)), shape=(self.grid.vertices.size, self.grid.vertices.size) )
 			self.inverseMatrix = sparse.linalg.inv( self.matrix )
 
 		diffusionTerm()
@@ -132,7 +132,7 @@ class HeatTransferSolver(Solver):
 		dirichletBoundaryCondition()
 
 	def solveLinearSystem(self):
-		self.temperatureField = self.inverseMatrix * self.independent
+		self.temperatureField = np.matmul(self.inverseMatrix.toarray(), self.independent)
 
 	def saveIterationResults(self):
 		self.saver.save("temperature", self.temperatureField, self.currentTime)
