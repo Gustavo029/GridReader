@@ -29,6 +29,7 @@ class Solver:
 		self.init()				# USER DEFINED
 		self.mainloop()			# USER DEFINED
 		self.finalizeSaver()	# DEFINED HERE
+		self.printFooter()
 
 	def settings(self):
 		self.initialTime = time.time()
@@ -67,9 +68,8 @@ class Solver:
 
 	def printFooter(self):
 		if self.verbosity:
-			print("Ended Simultaion, elapsed {:.2f}s".format(self.finalSimulationTime-self.initialTime))
-			print("Saved file: elapsed {:.2f}s".format(time.time()-self.finalSimulationTime))
-			print("\n\tresult: ")
+			print("Ended Simultaion, elapsed {:.2f}s".format(time.time()-self.initialTime))
+			print("\n\tresult: ", end="")
 			print(os.path.realpath(self.saver.outputPath), "\n")
 
 	def printIterationData(self):

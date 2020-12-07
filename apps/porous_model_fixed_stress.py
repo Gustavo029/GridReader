@@ -8,7 +8,7 @@ import time
 
 class PorousModelSolver(Solver):
 	def __init__(self, workspaceDirectory, gravity=False, verbosity=True, **kwargs):
-		# kwargs -> outputFileName, outputFormat, transient, verbosity
+		# kwargs -> outputFileName, extension, transient, verbosity
 		Solver.__init__(self, workspaceDirectory, verbosity=True, **kwargs)
 		self.gravity = gravity
 
@@ -72,6 +72,7 @@ class PorousModelSolver(Solver):
 
 			self.converged = ( self.difference <= self.tolerance ) or ( self.currentTime >= self.problemData.finalTime ) or ( self.iteration >= self.problemData.maxNumberOfIterations )
 
+			break
 	# -------------- HELPER FUNCTIONS --------------
 
 	def massAdd(self, i, j, val):
@@ -152,7 +153,10 @@ class PorousModelSolver(Solver):
 		localMatrixR = np.zeros( (element.vertices.size, element.vertices.size) )
 		
 		biotCoefficient = self.propertyData[element.region.handle]["BiotCoefficient"]
-		bulkModulus = self.propertyData[element.region.handle]["BulkModulus"]
+		shearModulus = self.propertyData[element.region.handle]["ShearModulus"]
+		poissonsRatio = self.propertyData[element.region.handle]["PoissonsRatio"]
+
+		bulkModulus = 2*shearModulus*(1+poissonsRatio)/(3*(1-2*poissonsRatio))
 
 		for local in range(element.vertices.size):
 			coefficient = (biotCoefficient**2) * element.subelementVolumes[local] / (bulkModulus * self.timeStep)
@@ -440,8 +444,8 @@ class PorousModelSolver(Solver):
 		if self.dimension == 3:
 			self.saver.save("w", self.nextDisplacements[2*self.numberOfVertices:3*self.numberOfVertices], self.currentTime)
 
-def porousModel(workspaceDirectory,solve=True,outputFileName="Results",outputFormat="csv",gravity=False,verbosity=False):
-	solver = PorousModelSolver(workspaceDirectory,outputFileName=outputFileName,outputFormat=outputFormat,gravity=gravity,verbosity=verbosity)
+def porousModel(workspaceDirectory,solve=True,outputFileName="Results",extension="csv",gravity=False,saverType="default",verbosity=True):
+	solver = PorousModelSolver(workspaceDirectory, outputFileName="Results", extension=extension, saverType=saverType, verbosity=verbosity)
 	if solve:
 		solver.solve()
 	return solver
@@ -450,5 +454,6 @@ if __name__ == "__main__":
 	model = "workspace/porous_model/linear"
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
+	saverType = "default" if not [1 for arg in sys.argv if "--saver" in arg] else [arg.split('=')[1] for arg in sys.argv if "--saver" in arg][0]
 
-	solver=porousModel(model,outputFormat=extension,gravity="-G" in sys.argv)
+	solver=porousModel(model, extension=extension, gravity="-G" in sys.argv, saverType=saverType, verbosity=False)

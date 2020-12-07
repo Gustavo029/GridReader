@@ -1582,7 +1582,7 @@ class SolidMechanicsSimulator(Simulator):
 		solver.problemData.libraryPath = os.path.join(os.path.dirname(__file__), os.path.pardir)
 		solver.problemData.paths["Output"] = self.outputDir
 		solver.outputFileName = self.outputFilePath
-		solver.outputFormat = "csv"
+		solver.extension = "csv"
 		
 		solver.grid = self.grid
 		solver.problemData.propertyData = self.propertyData
@@ -1723,7 +1723,7 @@ class HeatTransferSimulator(Simulator):
 		solver.problemData.libraryPath = os.path.join(os.path.dirname(__file__), os.path.pardir)
 		solver.problemData.paths["Output"] = self.outputDir
 		solver.outputFileName = self.outputFilePath
-		solver.outputFormat = "csv"
+		solver.extension = "csv"
 		
 		solver.grid = self.grid
 		solver.problemData.propertyData = self.propertyData

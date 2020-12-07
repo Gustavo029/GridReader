@@ -8,7 +8,7 @@ import time
 
 class StressEquilibriumSolver(Solver):
 	def __init__(self, workspaceDirectory, gravity=False, **kwargs):
-		# kwargs -> outputFileName, outputFormat, transient, verbosity
+		# kwargs -> outputFileName, extension, transient, verbosity
 		Solver.__init__(self, workspaceDirectory, **kwargs)
 		self.gravity = gravity
 
@@ -178,8 +178,8 @@ class StressEquilibriumSolver(Solver):
 		if self.dimension == 3:
 			self.saver.save('w', self.displacements[2*self.numberOfVertices:3*self.numberOfVertices], self.currentTime)
 
-def stressEquilibrium(workspaceDirectory,solve=True,outputFileName="Results",outputFormat="csv",gravity=False,verbosity=False):
-	solver = StressEquilibriumSolver(workspaceDirectory,outputFileName=outputFileName,outputFormat=outputFormat,gravity=gravity,verbosity=verbosity)
+def stressEquilibrium(workspaceDirectory,solve=True,outputFileName="Results",extension="csv",gravity=False,verbosity=False):
+	solver = StressEquilibriumSolver(workspaceDirectory,outputFileName=outputFileName,extension=extension,gravity=gravity,verbosity=verbosity)
 	if solve:
 		solver.solve()
 	return solver
@@ -189,4 +189,4 @@ if __name__ == "__main__":
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
 
-	solver=stressEquilibrium(model,outputFormat=extension,gravity="-G" in sys.argv)
+	solver=stressEquilibrium(model,extension=extension,gravity="-G" in sys.argv)
