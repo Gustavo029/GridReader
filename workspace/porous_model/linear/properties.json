@@ -9,7 +9,6 @@
 		"SolidDensity": 2.7e+3,
 		"FluidCompressibility": 4.35e-10,
 		"Viscosity": 1.00e-03,
-		"FluidDensity": 1000.0,
-		"BulkModulus": 0.7e+9
+		"FluidDensity": 1000.0
 	}
 }

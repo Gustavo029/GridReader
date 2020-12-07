@@ -7,6 +7,7 @@ from PyEFVLib.geometry.Boundary import Boundary, BoundaryBuilder
 from PyEFVLib.geometry.GridData import GridData
 
 class Grid:
+	shapes = [Triangle, Quadrilateral, Tetrahedron, Hexahedron, Prism, Pyramid]
 	def __init__(self, gridData):
 		if gridData.__class__ != GridData:
 			raise Exception("Grid argument must be of class GridData")
@@ -49,8 +50,6 @@ class Grid:
 		self.boundaries = np.array([])
 		BoundaryBuilder(self)
 
-	def getShapes(self):
-		return [Triangle, Quadrilateral, Tetrahedron, Hexahedron, Prism, Pyramid]
 
 	def buildStencil(self):
 		nVertices = len(self.vertices)

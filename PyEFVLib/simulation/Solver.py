@@ -1,6 +1,6 @@
 from PyEFVLib import ( 
 	Grid, ProblemData,
-	CgnsSaver, CsvSaver, VtuSaver, VtmSaver,
+	CgnsSaver, CsvSaver, VtuSaver, VtmSaver, MeshioSaver,
 	MSHReader,
 )
 import os
@@ -8,12 +8,13 @@ import time
 
 
 class Solver:
-	def __init__(self, workspaceDirectory, outputFileName="Results", outputFormat="csv", transient=True, verbosity=False, **kwargs):
+	def __init__(self, workspaceDirectory, outputFileName="Results", extension="csv", saverType="default", transient=True, verbosity=False, **kwargs):
 		self.workspaceDirectory = workspaceDirectory
 		self.outputFileName = outputFileName
-		self.outputFormat = outputFormat
+		self.extension = extension
 		self.transient = transient
 		self.verbosity = verbosity
+		self.saverType = saverType
 		
 		self.problemData = ProblemData(workspaceDirectory)
 		self.reader = MSHReader( self.problemData.paths["Grid"] )
@@ -28,6 +29,7 @@ class Solver:
 		self.init()				# USER DEFINED
 		self.mainloop()			# USER DEFINED
 		self.finalizeSaver()	# DEFINED HERE
+		self.printFooter()
 
 	def settings(self):
 		self.initialTime = time.time()
@@ -35,9 +37,12 @@ class Solver:
 		self.propertyData = self.problemData.propertyData
 		self.outputPath = self.problemData.paths["Output"]
 
-		savers = {"cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver}
+		savers = { "cgns": CgnsSaver, "csv": CsvSaver, "vtu": VtuSaver, "vtm": VtmSaver }
 
-		self.saver = savers[self.outputFormat](self.grid, self.outputPath, self.problemData.libraryPath, fileName=self.outputFileName)
+		if self.saverType == "default" and self.extension in savers.keys():
+			self.saver = savers[self.extension](self.grid, self.outputPath, self.problemData.libraryPath, fileName=self.outputFileName)
+		else:
+			self.saver = MeshioSaver(self.grid, self.outputPath, self.problemData.libraryPath, extension=self.extension, fileName=self.outputFileName)
 
 		self.numberOfVertices = self.grid.vertices.size
 		self.dimension = self.grid.dimension
@@ -63,9 +68,8 @@ class Solver:
 
 	def printFooter(self):
 		if self.verbosity:
-			print("Ended Simultaion, elapsed {:.2f}s".format(self.finalSimulationTime-self.initialTime))
-			print("Saved file: elapsed {:.2f}s".format(time.time()-self.finalSimulationTime))
-			print("\n\tresult: ")
+			print("Ended Simultaion, elapsed {:.2f}s".format(time.time()-self.initialTime))
+			print("\n\tresult: ", end="")
 			print(os.path.realpath(self.saver.outputPath), "\n")
 
 	def printIterationData(self):

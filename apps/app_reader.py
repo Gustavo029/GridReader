@@ -5,7 +5,7 @@ from PyEFVLib import MSHReader, Grid, Point
 import os, numpy as np
 
 # Tests mesh generated with Gmsh
-path = [os.path.dirname(__file__), os.path.pardir, "meshes", "Square.msh"]
+path = [os.path.dirname(__file__), os.path.pardir, "meshes", "msh", "2D", "Square.msh"]
 reader = MSHReader(os.path.join(*path))
 grid = Grid(reader.getData())
 elementVolumes = sum([element.volume for element in grid.elements])
