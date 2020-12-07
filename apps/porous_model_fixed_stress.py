@@ -13,7 +13,7 @@ class PorousModelSolver(Solver):
 		self.gravity = gravity
 
 	def init(self):
-		self.gravityVector = -9.81 * np.array([0.0, 1.0, 0.0])
+		self.gravityVector = -9.81 * np.array([0.0, 1.0, 0.0])[:self.dimension]
 
 		self.prevPressureField = self.problemData.initialValues["pressure"]				# p_old
 		self.pressureField = np.repeat(0.0, self.grid.vertices.size)					# p_k
@@ -72,7 +72,6 @@ class PorousModelSolver(Solver):
 
 			self.converged = ( self.difference <= self.tolerance ) or ( self.currentTime >= self.problemData.finalTime ) or ( self.iteration >= self.problemData.maxNumberOfIterations )
 
-			break
 	# -------------- HELPER FUNCTIONS --------------
 
 	def massAdd(self, i, j, val):
@@ -204,7 +203,7 @@ class PorousModelSolver(Solver):
 		return localMatrixQ
 
 	def computeLocalMatrixG(self, element):
-		localMatrixG = np.zeros( (element.vertices.size, element.vertices.size) )
+		localMatrixG = np.zeros( (element.vertices.size, self.dimension) )
 
 		permeability = self.propertyData[element.region.handle]["Permeability"]
 		fluidDensity = self.propertyData[element.region.handle]["FluidDensity"]
@@ -325,7 +324,6 @@ class PorousModelSolver(Solver):
 					self.geoAdd(V(vertex.handle), V(vertex.handle), 1.0 )
 
 			if wBoundaryType == "DIRICHLET":
-				print("NOOOOOOO")
 				for vertex in boundary.vertices:
 					self.geoMatrixVals = [val for coord, val in zip(self.geoCoords, self.geoMatrixVals) if coord[0] != W(vertex.handle)]
 					self.geoCoords 	   = [coord for coord in self.geoCoords if coord[0] != W(vertex.handle)]
@@ -451,7 +449,7 @@ def porousModel(workspaceDirectory,solve=True,outputFileName="Results",extension
 	return solver
 
 if __name__ == "__main__":
-	model = "workspace/porous_model/linear"
+	model = "workspace/porous_model/2D"
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
 	saverType = "default" if not [1 for arg in sys.argv if "--saver" in arg] else [arg.split('=')[1] for arg in sys.argv if "--saver" in arg][0]
