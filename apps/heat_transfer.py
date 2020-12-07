@@ -8,7 +8,7 @@ import time
 
 class HeatTransferSolver(Solver):
 	def __init__(self, workspaceDirectory, **kwargs):
-		# kwargs -> outputFileName, outputFormat, transient, verbosity
+		# kwargs -> outputFileName, extension, transient, verbosity
 		Solver.__init__(self, workspaceDirectory, **kwargs)
 
 	def init(self):
@@ -151,9 +151,8 @@ class HeatTransferSolver(Solver):
 			self.converged = True
 			return
 
-
-def heatTransfer(workspaceDirectory, solve=True, outputFormat="csv", transient=True):
-	solver = HeatTransferSolver(workspaceDirectory, outputFileName="Results", outputFormat=outputFormat, transient=transient, verbosity=True)
+def heatTransfer(workspaceDirectory, solve=True, extension="csv", saverType="default", transient=True, verbosity=True):
+	solver = HeatTransferSolver(workspaceDirectory, outputFileName="Results", extension=extension, saverType=saverType, transient=transient, verbosity=verbosity)
 	if solve:
 		solver.solve()
 	return solver
@@ -162,5 +161,6 @@ if __name__ == "__main__":
 	model = "workspace/heat_transfer_2d/linear"
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
+	saverType = "default" if not [1 for arg in sys.argv if "--saver" in arg] else [arg.split('=')[1] for arg in sys.argv if "--saver" in arg][0]
 
-	heatTransfer(model, outputFormat=extension, transient=not "-p" in sys.argv)
+	heatTransfer(model, extension=extension, saverType=saverType, transient=not "-p" in sys.argv, verbosity=False)

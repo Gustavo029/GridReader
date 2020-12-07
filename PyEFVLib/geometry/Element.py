@@ -16,7 +16,7 @@ class Element:
 		self.buildSubelement()
 
 	def tellShape(self):
-		for shape in self.grid.getShapes():
+		for shape in self.grid.shapes:
 			if shape._is(self):
 				self.shape = shape(self)
 				return

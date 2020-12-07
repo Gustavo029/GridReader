@@ -4,7 +4,7 @@ from PyEFVLib.geometry.Shape import Triangle, Quadrilateral, Tetrahedron, Hexahe
 from PyEFVLib.simulation.Saver import Saver
 
 class VtuSaver(Saver):
-	def __init__(self, grid, outputPath, basePath, fileName="Results"): 
+	def __init__(self, grid, outputPath, basePath, fileName="Results", **kwargs): 
 		Saver.__init__(self, grid, outputPath, basePath, 'vtu', fileName)
 
 	def finalize(self):

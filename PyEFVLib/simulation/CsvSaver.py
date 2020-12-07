@@ -3,7 +3,7 @@ import subprocess, os, sys
 from PyEFVLib.simulation.Saver import Saver
 
 class CsvSaver(Saver):
-	def __init__(self, grid, outputPath, basePath, fileName="Results"): 
+	def __init__(self, grid, outputPath, basePath, fileName="Results", **kwargs): 
 		Saver.__init__(self, grid, outputPath, basePath, 'csv', fileName)
 
 	def finalize(self):
