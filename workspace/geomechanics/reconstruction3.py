@@ -23,7 +23,6 @@ def reconstruct2D(grid,Fx,Fy,Fxx,Fyy):
 	divFieldAtVertices = Fxx(X,Y) + Fyy(X,Y)	
 	r1DivFieldAtVertices = grid.vertices.size * [0,]
 
-	i = 0
 	for element in grid.elements:
 		elementXFieldVector = np.array( [fieldXAtVertices[vertex.handle] for vertex in element.vertices] )
 		elementYFieldVector = np.array( [fieldYAtVertices[vertex.handle] for vertex in element.vertices] )
@@ -41,7 +40,6 @@ def reconstruct2D(grid,Fx,Fy,Fxx,Fyy):
 			r1DivFieldAtVertices[backwardVertex.handle] += np.dot( (xValAtIP, yValAtIP), area )
 			r1DivFieldAtVertices[forwardVertex.handle] -= np.dot( (xValAtIP, yValAtIP), area )
 
-			i += 1
 	r1DivFieldAtVertices = [ div/vertex.volume for vertex, div in zip( grid.vertices, r1DivFieldAtVertices ) ]
 
 	boundaryVertices = [ vertex.handle for boundary in grid.boundaries for vertex in boundary.vertices ]
@@ -53,32 +51,32 @@ def reconstruct2D(grid,Fx,Fy,Fxx,Fyy):
 	print(f"Max difference = {max(abs(divFieldAtVertices-r1DivFieldAtVertices)) :.4f}, Field range = [{min(divFieldAtVertices) :.4f}, {max(divFieldAtVertices) :.4f}]\t| {100*(max(abs(divFieldAtVertices-r1DivFieldAtVertices)))/(max(abs(divFieldAtVertices))):.2f}%")
 
 
-	divFieldAtVertices = Fxx(X,Y) + Fyy(X,Y)
-	r2DivFieldAtVertices = grid.vertices.size * [0,]
+	# divFieldAtVertices = Fxx(X,Y) + Fyy(X,Y)
+	# r2DivFieldAtVertices = grid.vertices.size * [0,]
 
-	i = 0
-	for element in grid.elements:
-		for innerFaceIndex, innerFace in enumerate(element.innerFaces):
-			backwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][0] ]
-			forwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][1] ]
+	# i = 0
+	# for element in grid.elements:
+	# 	for innerFaceIndex, innerFace in enumerate(element.innerFaces):
+	# 		backwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][0] ]
+	# 		forwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][1] ]
 
-			xValAtIP = fieldXAtIP[i]
-			yValAtIP = fieldYAtIP[i]
-			area = innerFace.area.getCoordinates()[:-1]
+	# 		xValAtIP = fieldXAtIP[i]
+	# 		yValAtIP = fieldYAtIP[i]
+	# 		area = innerFace.area.getCoordinates()[:-1]
 
-			r2DivFieldAtVertices[backwardVertex.handle] += np.dot( (xValAtIP, yValAtIP), area )
-			r2DivFieldAtVertices[forwardVertex.handle] -= np.dot( (xValAtIP, yValAtIP), area )
+	# 		r2DivFieldAtVertices[backwardVertex.handle] += np.dot( (xValAtIP, yValAtIP), area )
+	# 		r2DivFieldAtVertices[forwardVertex.handle] -= np.dot( (xValAtIP, yValAtIP), area )
 
-			i += 1
-	r2DivFieldAtVertices = [ div/vertex.volume for vertex, div in zip( grid.vertices, r2DivFieldAtVertices ) ]
+	# 		i += 1
+	# r2DivFieldAtVertices = [ div/vertex.volume for vertex, div in zip( grid.vertices, r2DivFieldAtVertices ) ]
 
-	boundaryVertices = [ vertex.handle for boundary in grid.boundaries for vertex in boundary.vertices ]
-	divFieldAtVertices, r2DivFieldAtVertices = zip(*[ (div, r2div) for div,r2div,vertex in zip(divFieldAtVertices,r2DivFieldAtVertices,grid.vertices) if vertex.handle not in boundaryVertices ])
+	# boundaryVertices = [ vertex.handle for boundary in grid.boundaries for vertex in boundary.vertices ]
+	# divFieldAtVertices, r2DivFieldAtVertices = zip(*[ (div, r2div) for div,r2div,vertex in zip(divFieldAtVertices,r2DivFieldAtVertices,grid.vertices) if vertex.handle not in boundaryVertices ])
 
-	divFieldAtVertices, r2DivFieldAtVertices = np.array(divFieldAtVertices), np.array(r2DivFieldAtVertices)
+	# divFieldAtVertices, r2DivFieldAtVertices = np.array(divFieldAtVertices), np.array(r2DivFieldAtVertices)
 
-	print("\nAnalytical values at integration points")
-	print(f"Max difference = {max(abs(divFieldAtVertices-r2DivFieldAtVertices)) :.4f}, Field range = [{min(divFieldAtVertices) :.4f}, {max(divFieldAtVertices) :.4f}]\t| {100*(max(abs(divFieldAtVertices-r2DivFieldAtVertices)))/(max(abs(divFieldAtVertices))):.2f}%")
+	# print("\nAnalytical values at integration points")
+	# print(f"Max difference = {max(abs(divFieldAtVertices-r2DivFieldAtVertices)) :.4f}, Field range = [{min(divFieldAtVertices) :.4f}, {max(divFieldAtVertices) :.4f}]\t| {100*(max(abs(divFieldAtVertices-r2DivFieldAtVertices)))/(max(abs(divFieldAtVertices))):.2f}%")
 
 def reconstruct3D(grid,Fx,Fy,Fz,Fxx,Fyy,Fzz):
 	X,Y,Z = zip(*[v.getCoordinates() for v in grid.vertices])
@@ -129,33 +127,33 @@ def reconstruct3D(grid,Fx,Fy,Fz,Fxx,Fyy,Fzz):
 	print(f"Max difference = {max(abs(divFieldAtVertices-r1DivFieldAtVertices)) :.4f}, Field range = [{min(divFieldAtVertices) :.4f}, {max(divFieldAtVertices) :.4f}]\t| {100*(max(abs(divFieldAtVertices-r1DivFieldAtVertices)))/(max(abs(divFieldAtVertices))):.2f}%")
 
 
-	divFieldAtVertices = [Fxx(x,y,z) + Fyy(x,y,z) + Fzz(x,y,z) for x,y,z in zip(X,Y,Z)]
-	r2DivFieldAtVertices = grid.vertices.size * [0,]
+	# divFieldAtVertices = [Fxx(x,y,z) + Fyy(x,y,z) + Fzz(x,y,z) for x,y,z in zip(X,Y,Z)]
+	# r2DivFieldAtVertices = grid.vertices.size * [0,]
 
-	i = 0
-	for element in grid.elements:
-		for innerFaceIndex, innerFace in enumerate(element.innerFaces):
-			backwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][0] ]
-			forwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][1] ]
+	# i = 0
+	# for element in grid.elements:
+	# 	for innerFaceIndex, innerFace in enumerate(element.innerFaces):
+	# 		backwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][0] ]
+	# 		forwardVertex = element.vertices[ element.shape.innerFaceNeighborVertices[innerFaceIndex][1] ]
 
-			xValAtIP = fieldXAtIP[i]
-			yValAtIP = fieldYAtIP[i]
-			zValAtIP = fieldZAtIP[i]
-			area = innerFace.area.getCoordinates()
+	# 		xValAtIP = fieldXAtIP[i]
+	# 		yValAtIP = fieldYAtIP[i]
+	# 		zValAtIP = fieldZAtIP[i]
+	# 		area = innerFace.area.getCoordinates()
 
-			r2DivFieldAtVertices[backwardVertex.handle] += np.dot( (xValAtIP, yValAtIP, zValAtIP), area )
-			r2DivFieldAtVertices[forwardVertex.handle] -= np.dot( (xValAtIP, yValAtIP, zValAtIP), area )
+	# 		r2DivFieldAtVertices[backwardVertex.handle] += np.dot( (xValAtIP, yValAtIP, zValAtIP), area )
+	# 		r2DivFieldAtVertices[forwardVertex.handle] -= np.dot( (xValAtIP, yValAtIP, zValAtIP), area )
 
-			i += 1
-	r2DivFieldAtVertices = [ div/vertex.volume for vertex, div in zip( grid.vertices, r2DivFieldAtVertices ) ]
+	# 		i += 1
+	# r2DivFieldAtVertices = [ div/vertex.volume for vertex, div in zip( grid.vertices, r2DivFieldAtVertices ) ]
 
-	boundaryVertices = [ vertex.handle for boundary in grid.boundaries for vertex in boundary.vertices ]
-	divFieldAtVertices, r2DivFieldAtVertices = zip(*[ (div, r2div) for div,r2div,vertex in zip(divFieldAtVertices,r2DivFieldAtVertices,grid.vertices) if vertex.handle not in boundaryVertices ])
+	# boundaryVertices = [ vertex.handle for boundary in grid.boundaries for vertex in boundary.vertices ]
+	# divFieldAtVertices, r2DivFieldAtVertices = zip(*[ (div, r2div) for div,r2div,vertex in zip(divFieldAtVertices,r2DivFieldAtVertices,grid.vertices) if vertex.handle not in boundaryVertices ])
 
-	divFieldAtVertices, r2DivFieldAtVertices = np.array(divFieldAtVertices), np.array(r2DivFieldAtVertices)
+	# divFieldAtVertices, r2DivFieldAtVertices = np.array(divFieldAtVertices), np.array(r2DivFieldAtVertices)
 
-	print("\nAnalytical values at integration points")
-	print(f"Max difference = {max(abs(divFieldAtVertices-r2DivFieldAtVertices)) :.4f}, Field range = [{min(divFieldAtVertices) :.4f}, {max(divFieldAtVertices) :.4f}]\t| {100*(max(abs(divFieldAtVertices-r2DivFieldAtVertices)))/(max(abs(divFieldAtVertices))):.2f}%")
+	# print("\nAnalytical values at integration points")
+	# print(f"Max difference = {max(abs(divFieldAtVertices-r2DivFieldAtVertices)) :.4f}, Field range = [{min(divFieldAtVertices) :.4f}, {max(divFieldAtVertices) :.4f}]\t| {100*(max(abs(divFieldAtVertices-r2DivFieldAtVertices)))/(max(abs(divFieldAtVertices))):.2f}%")
 
 
 if __name__ == "__main__":

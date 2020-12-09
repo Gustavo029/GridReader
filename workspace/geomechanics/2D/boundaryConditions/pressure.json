@@ -3,10 +3,10 @@
     "West": {
         "condition": "NEUMANN",
         "type": "CONSTANT",
-        "value": 10000.0
+        "value": 0.0
     },
     "East": {
-        "condition": "DIRICHLET",
+        "condition": "NEUMANN",
         "type": "CONSTANT",
         "value": 0.0
     },

@@ -6,7 +6,7 @@ from scipy import sparse
 import scipy.sparse.linalg
 import time
 
-class PorousModelSolver(Solver):
+class GeomechanicsSolver(Solver):
 	def __init__(self, workspaceDirectory, gravity=False, verbosity=True, **kwargs):
 		# kwargs -> outputFileName, extension, transient, verbosity
 		Solver.__init__(self, workspaceDirectory, verbosity=True, **kwargs)
@@ -381,13 +381,13 @@ class PorousModelSolver(Solver):
 			nextElementPressures = [ self.nextPressureField[vertex.handle] for vertex in element.vertices ]
 			coefficients = np.matmul( localMatrixL, nextElementPressures )
 
-			local = 0
-			for vertex in element.vertices:
-				subelementVolume = element.subelementVolumes[local]
-				for c in range(self.dimension):
-					self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = density * subelementVolume * self.gravityVector[c] + coefficients[c+local*self.dimension]
+			# local = 0
+			# for vertex in element.vertices:
+			# 	subelementVolume = element.subelementVolumes[local]
+			# 	for c in range(self.dimension):
+			# 		self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = density * subelementVolume * self.gravityVector[c] + coefficients[c+local*self.dimension]
 
-				local += 1
+			# 	local += 1
 
 		# Boundary Conditions
 		U = lambda handle: handle + self.numberOfVertices * 0
@@ -442,16 +442,16 @@ class PorousModelSolver(Solver):
 		if self.dimension == 3:
 			self.saver.save("w", self.nextDisplacements[2*self.numberOfVertices:3*self.numberOfVertices], self.currentTime)
 
-def porousModel(workspaceDirectory,solve=True,outputFileName="Results",extension="csv",gravity=False,saverType="default",verbosity=True):
-	solver = PorousModelSolver(workspaceDirectory, outputFileName="Results", extension=extension, saverType=saverType, verbosity=verbosity)
+def geomechanics(workspaceDirectory,solve=True,outputFileName="Results",extension="csv",gravity=False,saverType="default",verbosity=True):
+	solver = GeomechanicsSolver(workspaceDirectory, outputFileName="Results", extension=extension, saverType=saverType, verbosity=verbosity)
 	if solve:
 		solver.solve()
 	return solver
 
 if __name__ == "__main__":
-	model = "workspace/porous_model/2D"
+	model = "workspace/geomechanics/2D"
 	if len(sys.argv)>1 and not "-" in sys.argv[1]: model=sys.argv[1]
 	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
 	saverType = "default" if not [1 for arg in sys.argv if "--saver" in arg] else [arg.split('=')[1] for arg in sys.argv if "--saver" in arg][0]
 
-	solver=porousModel(model, extension=extension, gravity="-G" in sys.argv, saverType=saverType, verbosity=False)
+	solver=geomechanics(model, extension=extension, gravity="-G" in sys.argv, saverType=saverType, verbosity=False)
