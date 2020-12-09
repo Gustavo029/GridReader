@@ -3,17 +3,15 @@ from PyEFVLib.geometry.Point import Point
 from PyEFVLib.geometry.InnerFace import InnerFace
 
 class Element:
-	def __init__(self, vertices, grid, handle):
+	def __init__(self, grid, verticesIndexes, handle):
 		self.handle = handle
 		self.grid = grid
-		self.vertices = np.array(vertices)
+		self.vertices = np.array([grid.vertices[vertexIndex] for vertexIndex in verticesIndexes])
 
-		self.innerFaces = np.array([]) # Inner faces of the element are the faces of the control volumes
-		self.outerFaces = np.array([]) # Outer faces are the faces of the control volumes which belong to the boundary
-		self.faces 		= np.array([]) # Inner and outer faces
-
-		for vertex in vertices:
+		for vertex in self.vertices:
 			vertex.addElement(self)
+		
+		self.innerFaces = np.array([])
 
 		self.tellShape()
 		self.buildInnerFaces()
@@ -22,7 +20,7 @@ class Element:
 	def tellShape(self):
 		for shape in self.grid.shapes:
 			if shape._is(self):
-				self.shape = shape(self)
+				self.shape = shape
 				return
 		raise Exception("This element has not been registered in Grid yet")
 
@@ -30,12 +28,11 @@ class Element:
 		centroid = Point(*sum([v.getCoordinates() for v in self.vertices])/self.vertices.size)
 		for i in range(self.shape.numberOfInnerFaces):
 			innerFace = InnerFace(self, self.grid.innerFaceCounter, i)
-			innerFace.area = self.shape.getInnerFaceAreaVector(i,centroid, self.vertices)
+			innerFace.setArea( self.shape.getInnerFaceAreaVector(i, centroid, self.vertices) )
 
 			self.innerFaces = np.append(self.innerFaces, innerFace)
 
 		self.grid.innerFaceCounter += self.shape.numberOfInnerFaces
-		self.faces = np.concatenate((self.faces, self.innerFaces))
 
 	def buildSubelement(self):
 		self.subelementVolumes = []
@@ -50,10 +47,6 @@ class Element:
 
 	def setRegion(self, region):
 		self.region = region
-
-	def addOuterFace(self, outerFace):
-		self.outerFaces = np.append( self.outerFaces, outerFace )
-		self.faces = np.append( self.faces, outerFace )
 
 	def getTransposedJacobian(self, shapeFunctionDerivatives):	# shapeFunctionDerivatives must be already a numpy array
 		vertices = np.array([[vertex.getCoordinates()[k] for k in range(self.shape.dimension)] for vertex in self.vertices])

@@ -38,7 +38,7 @@ class MSHReader:
 		self.connectivitiesFileData = [ ( ''.join([c1,c2]), int(p_id), [ int(v)-1 for v in nodes ] ) for idx, c1, c2, p_id, e_id, *nodes in self.fileData[3][1:] ]
 
 		# Sorts elements by sections
-		self.sectionElements = [ [ e[2] for e in self.connectivitiesFileData if e[1] == section[1] ] for section in self.sectionsFileData]
+		self.sectionsElements = [ [ e[2] for e in self.connectivitiesFileData if e[1] == section[1] ] for section in self.sectionsFileData]
 
 		shapeCodes = {"line":"12", "triangle":"22", "quadrilateral":"32", "tetrahedron":"42", "pyramid":"72", "prism":"62", "hexagon":"52"}
 		self.shapes = { shape : [ idx for idx, e in enumerate(self.connectivitiesFileData) if e[0] == shapeCodes[shape] ] for shape in shapeCodes.keys() }
@@ -46,31 +46,31 @@ class MSHReader:
 		self.gridDimension = max(self.sectionsFileData, key=lambda p:p[0])[0]
 
 	def getData(self):
-		elementsConnectivities, regionNames, regionsElementsIndexes = [], [], []
-		boundariesConnectivities, boundaryNames, boundariesIndexes = [], [], []
+		elementsConnectivities, regionsNames, regionsElementsIndexes = [], [], []
+		boundariesConnectivities, boundariesNames, boundariesIndexes = [], [], []
 
 		maxDimension = max([dimension for dimension, index, name in self.sectionsFileData])
-		for [dimension, index, name], sectionElements in zip( self.sectionsFileData, self.sectionElements ):
+		for [dimension, index, name], sectionElements in zip( self.sectionsFileData, self.sectionsElements ):
 			if dimension == maxDimension:
 				indexOfFirstConnectivity = len(elementsConnectivities)
 
 				elementsConnectivities += sectionElements
-				regionNames.append(name)
+				regionsNames.append(name)
 				regionsElementsIndexes.append( list(range(indexOfFirstConnectivity, indexOfFirstConnectivity+len(sectionElements))) )
 
 			else:
 				indexOfFirstConnectivity = len(boundariesConnectivities)
 
 				boundariesConnectivities += sectionElements
-				boundaryNames.append(name)
+				boundariesNames.append(name)
 				boundariesIndexes.append( list(range(indexOfFirstConnectivity, indexOfFirstConnectivity+len(sectionElements))) )
 
 		gridData = GridData(self.path)
 		gridData.setDimension(self.gridDimension)
 		gridData.setVertices(self.verticesFileData)
 		gridData.setElementConnectivity(elementsConnectivities)
-		gridData.setRegions(regionNames, regionsElementsIndexes)
-		gridData.setBoundaries(boundaryNames, boundariesIndexes, boundariesConnectivities)
+		gridData.setRegions(regionsNames, regionsElementsIndexes)
+		gridData.setBoundaries(boundariesNames, boundariesIndexes, boundariesConnectivities)
 		gridData.setShapes([ self.shapes['line'], self.shapes['triangle'], self.shapes['quadrilateral'], self.shapes['tetrahedron'], [], [], [] ])
 
 		return gridData
