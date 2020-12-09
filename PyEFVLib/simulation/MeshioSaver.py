@@ -19,7 +19,7 @@ class MeshioSaver(Saver):
 		meshioShapes   = ["triangle", "quad", "tetra", "pyramid", "wedge", "hexahedron"]
 		pyEFVLibShapes = [Triangle, Quadrilateral, Tetrahedron, Pyramid, Prism, Hexahedron]
 
-		self.cells = [ ( shape , np.array([[vertex.handle for vertex in element.vertices] for element in self.grid.elements if element.shape.__class__ == shapeClass], dtype=np.uint64) ) for shape, shapeClass in zip(meshioShapes, pyEFVLibShapes) ]
+		self.cells = [ ( shape , np.array([[vertex.handle for vertex in element.vertices] for element in self.grid.elements if element.shape == shapeClass], dtype=np.uint64) ) for shape, shapeClass in zip(meshioShapes, pyEFVLibShapes) ]
 		self.cells = [ cell for cell in self.cells if cell[1].size ]
 
 		# Two separate writers because the only that supports time series data is xdmf

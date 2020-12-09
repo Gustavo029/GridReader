@@ -11,7 +11,7 @@ class VtmSaver(Saver):
 	def finalize(self):
 		shapesDict	 = { Triangle:5,Quadrilateral:9,Tetrahedron:10,Hexahedron:12,Prism:13,Pyramid:14 }
 		connectivity = [ [ vertex.handle for vertex in element.vertices ] for element in self.grid.elements ]
-		shapes		 = [ shapesDict[element.shape.__class__] for element in self.grid.elements ]
+		shapes		 = [ shapesDict[element.shape] for element in self.grid.elements ]
 		offsets		 = [ len(conn) for conn in connectivity ]
 		offsets		 = [ sum(offsets[:i+1]) for i in range( len(offsets) ) ]
 
