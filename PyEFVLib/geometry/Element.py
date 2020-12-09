@@ -8,6 +8,10 @@ class Element:
 		self.grid = grid
 		self.vertices = np.array(vertices)
 
+		self.innerFaces = np.array([]) # Inner faces of the element are the faces of the control volumes
+		self.outerFaces = np.array([]) # Outer faces are the faces of the control volumes which belong to the boundary
+		self.faces 		= np.array([]) # Inner and outer faces
+
 		for vertex in vertices:
 			vertex.addElement(self)
 
@@ -23,7 +27,6 @@ class Element:
 		raise Exception("This element has not been registered in Grid yet")
 
 	def buildInnerFaces(self):
-		self.innerFaces = np.array([])
 		centroid = Point(*sum([v.getCoordinates() for v in self.vertices])/self.vertices.size)
 		for i in range(self.shape.numberOfInnerFaces):
 			innerFace = InnerFace(self, self.grid.innerFaceCounter, i)
@@ -32,6 +35,7 @@ class Element:
 			self.innerFaces = np.append(self.innerFaces, innerFace)
 
 		self.grid.innerFaceCounter += self.shape.numberOfInnerFaces
+		self.faces = np.concatenate((self.faces, self.innerFaces))
 
 	def buildSubelement(self):
 		self.subelementVolumes = []
@@ -46,6 +50,10 @@ class Element:
 
 	def setRegion(self, region):
 		self.region = region
+
+	def addOuterFace(self, outerFace):
+		self.outerFaces = np.append( self.outerFaces, outerFace )
+		self.faces = np.append( self.faces, outerFace )
 
 	def getTransposedJacobian(self, shapeFunctionDerivatives):	# shapeFunctionDerivatives must be already a numpy array
 		vertices = np.array([[vertex.getCoordinates()[k] for k in range(self.shape.dimension)] for vertex in self.vertices])

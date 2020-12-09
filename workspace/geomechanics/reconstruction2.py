@@ -18,34 +18,33 @@ def reconstruct2D(grid,F,Fx,Fy,cplot=False,diff=False,quiver=False):
 	fieldAtVertices = F(X,Y)
 	fieldAtIP = F(Xip,Yip)
 	
-	gradFieldAtVertices = np.array(list(zip( Fx(X,Y), Fy(X,Y) )))
-	r1GradFieldAtVertices = grid.vertices.size * [(0,0),]
+	# gradFieldAtVertices = np.array(list(zip( Fx(X,Y), Fy(X,Y) )))
+	# r1GradFieldAtVertices = grid.vertices.size * [(0,0),]
 
-	for element in grid.elements:
-		elementFieldVector = np.array( [fieldAtVertices[vertex.handle] for vertex in element.vertices] )
-		for local, vertex in enumerate(element.vertices):
-			localDerivatives = element.shape.vertexShapeFunctionDerivatives[local]
-			globalDerivatives = np.matmul(np.linalg.inv(element.getTransposedJacobian(localDerivatives)) , np.transpose(localDerivatives))
+	# for element in grid.elements:
+	# 	elementFieldVector = np.array( [fieldAtVertices[vertex.handle] for vertex in element.vertices] )
+	# 	for local, vertex in enumerate(element.vertices):
+	# 		localDerivatives = element.shape.vertexShapeFunctionDerivatives[local]
+	# 		globalDerivatives = np.matmul(np.linalg.inv(element.getTransposedJacobian(localDerivatives)) , np.transpose(localDerivatives))
 			
-			grad = np.matmul( globalDerivatives, elementFieldVector )
-			volume = element.subelementVolumes[local]
+	# 		grad = np.matmul( globalDerivatives, elementFieldVector )
+	# 		volume = element.subelementVolumes[local]
 
-			r1GradFieldAtVertices[vertex.handle] += grad * volume
-	r1GradFieldAtVertices = [ grad/vertex.volume for vertex, grad in zip( grid.vertices, r1GradFieldAtVertices ) ]
+	# 		r1GradFieldAtVertices[vertex.handle] += grad * volume
+	# r1GradFieldAtVertices = [ grad/vertex.volume for vertex, grad in zip( grid.vertices, r1GradFieldAtVertices ) ]
 
-	FxV, FyV = zip(*gradFieldAtVertices); FxV, FyV = np.array(FxV), np.array(FyV)
-	r1FxV, r1FyV = zip(*r1GradFieldAtVertices); r1FxV, r1FyV = np.array(r1FxV), np.array(r1FyV)
+	# FxV, FyV = zip(*gradFieldAtVertices); FxV, FyV = np.array(FxV), np.array(FyV)
+	# r1FxV, r1FyV = zip(*r1GradFieldAtVertices); r1FxV, r1FyV = np.array(r1FxV), np.array(r1FyV)
 
-	print("\nShape Functions Reconstruction")
-	gNFaV = np.array([np.linalg.norm(grad) for grad in gradFieldAtVertices])
-	r1gNFaV = np.array([np.linalg.norm(grad) for grad in r1GradFieldAtVertices])
-	print(f"Max difference = {max(abs(gNFaV-r1gNFaV)) :>8.4f}, Field range = [{min(gNFaV) :.4f}, {max(gNFaV) :.4f}]\t| {100*max(abs(gNFaV-r1gNFaV))/max(gNFaV):.2f}%")
+	# print("\nShape Functions Reconstruction")
+	# gNFaV = np.array([np.linalg.norm(grad) for grad in gradFieldAtVertices])
+	# r1gNFaV = np.array([np.linalg.norm(grad) for grad in r1GradFieldAtVertices])
+	# print(f"Max difference = {max(abs(gNFaV-r1gNFaV)) :>8.4f}, Field range = [{min(gNFaV) :.4f}, {max(gNFaV) :.4f}]\t| {100*max(abs(gNFaV-r1gNFaV))/max(gNFaV):.6f}%")
 
 
 	gradFieldAtVertices = np.array(list(zip( Fx(X,Y), Fy(X,Y) )))
 	r2GradFieldAtVertices = grid.vertices.size * [(0,0),]
 
-	i = 0
 	for element in grid.elements:
 		elementFieldVector = np.array( [fieldAtVertices[vertex.handle] for vertex in element.vertices] )
 		for innerFaceIndex, innerFace in enumerate(element.innerFaces):
@@ -61,16 +60,36 @@ def reconstruct2D(grid,F,Fx,Fy,cplot=False,diff=False,quiver=False):
 			r2GradFieldAtVertices[backwardVertex.handle] += pressureAtIP * area	
 			r2GradFieldAtVertices[forwardVertex.handle] -= pressureAtIP * area	
 
-			i += 1
+		for outerFaceIndex, outerFace in enumerate(element.outerFaces):
+			vertex = outerFace.vertex
+			otherVertex = [v for v in outerFace.facet.vertices if v!=vertex][0]
+			v1 = vertex.getLocal(outerFace.facet.element)
+			v2 = otherVertex.getLocal(outerFace.facet.element)
+			triTRANSCOORDS = [[None,(1/4,0),(0,1/4)], [(3/4,0),None,(3/4,1/4)], [(0,3/4),(1/4,3/4),None]]
+			quadTRANSCOORDS = [[None,(1/4,0),None,(0,1/4)], [(3/4,0),None,(1,1/4),None], [None,(1,3/4),None,(3/4,1)], [(0,3/4),None,(1/4,1),None]]
+			triFuncs = [lambda x,y:1-x-y, lambda x,y:x, lambda x,y: y]
+			quadFuncs = [lambda x,y:(1-x)*(1-y), lambda x,y:x*(1-y), lambda x,y:x*y, lambda x,y:(1-x)*y]
+
+			coords = {3:triTRANSCOORDS,4:quadTRANSCOORDS}[outerFace.facet.element.vertices.size][v1][v2]
+			funcs = {3:triFuncs,4:quadFuncs}[outerFace.facet.element.vertices.size]
+			shapeFunctionValues = [ func(*coords) for func in funcs ]
+
+			pressureAtIP = np.dot(elementFieldVector, shapeFunctionValues)
+			area = outerFace.area.getCoordinates()[:-1]
+
+			r2GradFieldAtVertices[vertex.handle] -= pressureAtIP * area	
+
+
+
 	r2GradFieldAtVertices = [ grad/vertex.volume for vertex, grad in zip( grid.vertices, r2GradFieldAtVertices ) ]
 
 	boundaryVertices = [ vertex.handle for boundary in grid.boundaries for vertex in boundary.vertices ]
 	gradFieldAtVertices, r2GradFieldAtVertices = zip(*[ (grad,rgrad) for grad,rgrad,vertex in zip(gradFieldAtVertices,r2GradFieldAtVertices,grid.vertices) if vertex.handle not in boundaryVertices ])
 
-	print("\nSum of values in the control volume contour")
+	# print("\nSum of values in the control volume contour")
 	gNFaV = np.array([np.linalg.norm(grad) for grad in gradFieldAtVertices])
 	r2gNFaV = np.array([np.linalg.norm(grad) for grad in r2GradFieldAtVertices])
-	print(f"Max difference = {max(abs(gNFaV-r2gNFaV)) :>8.4f}, Field range = [{min(gNFaV) :.4f}, {max(gNFaV) :.4f}]\t| {100*max(abs(gNFaV-r2gNFaV))/max(gNFaV):.2f}%")
+	print(f"Max difference = {max(abs(gNFaV-r2gNFaV)) :>8.4f}, Field range = [{min(gNFaV) :.4f}, {max(gNFaV) :.4f}]\t| {100*max(abs(gNFaV-r2gNFaV))/max(gNFaV):.6f}%")
 
 def reconstruct3D(grid,F,Fx,Fy,Fz):
 	X,Y,Z = zip(*[v.getCoordinates() for v in grid.vertices])
@@ -131,7 +150,7 @@ if __name__ == "__main__":
 		print("\nexp(-x) * sin(y)")
 		reconstruct2D(grid,F,Fx,Fy)
 
-	for meshName in ["Hexas.msh", "Pyrams.msh"]:
+	for meshName in []:#["Hexas.msh", "Pyrams.msh"]:
 		grid = PyEFVLib.read( os.path.join(pyEFVLibPath, "meshes", "msh", "3D", meshName) )
 		print("------------------------------------\n", meshName)
 		
