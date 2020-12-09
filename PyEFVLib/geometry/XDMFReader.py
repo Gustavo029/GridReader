@@ -53,10 +53,10 @@ class XDMFReader:
 			if index not in setdict.keys():
 				setdict[index] = []
 			setdict[index].append(i)
-		regionNames = []
+		regionsNames = []
 		for key in setdict:
-			regionNames.append(self.zoneList['ZoneList']['Zone'+ str(key)]['@name'])
-		return regionNames
+			regionsNames.append(self.zoneList['ZoneList']['Zone'+ str(key)]['@name'])
+		return regionsNames
 
 	def getRegionIndexes(self, setobj, setname):
 		setdict = {}

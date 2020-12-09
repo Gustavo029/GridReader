@@ -163,4 +163,4 @@ if __name__ == "__main__":
 	extension = "csv" if not [1 for arg in sys.argv if "--extension" in arg] else [arg.split('=')[1] for arg in sys.argv if "--extension" in arg][0]
 	saverType = "default" if not [1 for arg in sys.argv if "--saver" in arg] else [arg.split('=')[1] for arg in sys.argv if "--saver" in arg][0]
 
-	heatTransfer(model, extension=extension, saverType=saverType, transient=not "-p" in sys.argv, verbosity=False)
+	heatTransfer(model, extension=extension, saverType=saverType, transient=not "-p" in sys.argv, verbosity="-v" in sys.argv)

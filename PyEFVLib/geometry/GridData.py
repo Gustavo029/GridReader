@@ -5,14 +5,14 @@ class GridData:
 	def setDimension(self, gridDimension):
 		self.dimension = gridDimension
 
-	def setVertices(self, vertices):
-		self.vertices = vertices
+	def setVertices(self, verticesCoordinates):
+		self.verticesCoordinates = verticesCoordinates
 
 	def setElementConnectivity(self, elementsConnectivities):
 		self.elementsConnectivities = elementsConnectivities
 
-	def setRegions(self, regionNames, regionsElementsIndexes):
-		self.regionsNames = regionNames
+	def setRegions(self, regionsNames, regionsElementsIndexes):
+		self.regionsNames = regionsNames
 		self.regionsElementsIndexes = regionsElementsIndexes
 
 	def setBoundaries(self, boundariesNames, boundariesIndexes, boundariesConnectivities):
