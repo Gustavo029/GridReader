@@ -8,7 +8,7 @@ import time
 
 
 class Solver:
-	def __init__(self, problemData, extension="csv", saverType="default", transient=True, verbosity=False, **kwargs):
+	def __init__(self, problemData, extension="csv", saverType="default", transient=True, verbosity=False):
 		self.problemData = problemData
 		self.extension = extension
 		self.transient = transient

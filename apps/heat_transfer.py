@@ -153,7 +153,7 @@ class HeatTransferSolver(Solver):
 			return
 
 def heatTransfer(problemData, solve=True, extension="csv", saverType="default", transient=True, verbosity=True):
-	solver = HeatTransferSolver(problemData, outputFileName="Results", extension=extension, saverType=saverType, transient=transient, verbosity=verbosity)
+	solver = HeatTransferSolver(problemData, extension=extension, saverType=saverType, transient=transient, verbosity=verbosity)
 	if solve:
 		solver.solve()
 	return solver

@@ -178,8 +178,8 @@ class StressEquilibriumSolver(PyEFVLib.Solver):
 		if self.dimension == 3:
 			self.saver.save('w', self.displacements[2*self.numberOfVertices:3*self.numberOfVertices], self.currentTime)
 
-def stressEquilibrium(workspaceDirectory,solve=True,outputFileName="Results",extension="csv",gravity=False,verbosity=False):
-	solver = StressEquilibriumSolver(workspaceDirectory,outputFileName=outputFileName,extension=extension,gravity=gravity,verbosity=verbosity)
+def stressEquilibrium(workspaceDirectory,solve=True,extension="csv",gravity=False,verbosity=False):
+	solver = StressEquilibriumSolver(workspaceDirectory,extension=extension,gravity=gravity,verbosity=verbosity)
 	if solve:
 		solver.solve()
 	return solver
