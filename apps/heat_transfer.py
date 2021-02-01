@@ -13,7 +13,7 @@ class HeatTransferSolver(Solver):
 		Solver.__init__(self, workspaceDirectory, **kwargs)
 
 	def init(self):
-		self.temperatureField = np.repeat(0.0, self.grid.vertices.size)
+		self.temperatureField = np.repeat(0.0, self.grid.numberOfVertices)
 		self.prevTemperatureField = self.problemData.initialValues["temperature"]
 		
 		self.saver.save("temperature", self.prevTemperatureField, self.currentTime)
@@ -78,7 +78,7 @@ class HeatTransferSolver(Solver):
 
 		def invertMatrix():
 			# Invert Matrix
-			self.matrix = sparse.csc_matrix( (self.matrixVals, zip(*self.coords)), shape=(self.grid.vertices.size, self.grid.vertices.size) )
+			self.matrix = sparse.csc_matrix( (self.matrixVals, zip(*self.coords)), shape=(self.grid.numberOfVertices, self.grid.numberOfVertices) )
 			self.inverseMatrix = sparse.linalg.inv( self.matrix )
 
 		diffusionTerm()
@@ -88,7 +88,7 @@ class HeatTransferSolver(Solver):
 		invertMatrix()
 
 	def addToIndependentVector(self):
-		self.independent = np.zeros(self.grid.vertices.size)
+		self.independent = np.zeros(self.grid.numberOfVertices)
 
 		def generationTerm():
 			# Generation Term

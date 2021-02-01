@@ -29,7 +29,7 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 		} )
 		fluxDF.to_csv(fluxesOutputPath, index=False)
 		del fluxDF
-	temperatureField = np.repeat(0.0, grid.vertices.size)
+	temperatureField = np.repeat(0.0, grid.numberOfVertices)
 	prevTemperatureField = initialValues["temperature"].copy()
 
 	coords,matrixVals = [], []
@@ -51,7 +51,7 @@ def heatTransfer(libraryPath, outputPath, extension, grid, propertyData, initial
 		if iteration > 1 and not transient:
 			break
 		#-------------------------ADD TO LINEAR SYSTEM------------------------------
-		independent = np.zeros(grid.vertices.size)
+		independent = np.zeros(grid.numberOfVertices)
 
 		# Generation Term
 		for region in grid.regions:
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 			propertyData = problemData.propertyData,
 			
 			# initialValues = problemData.initialValues,
-			initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.vertices.size ) },
+			initialValues = { "temperature": np.repeat( problemData.initialValues["temperature"], grid.numberOfVertices ) },
 			neumannBoundaries = problemData.neumannBoundaries,
 			dirichletBoundaries = problemData.dirichletBoundaries,
 

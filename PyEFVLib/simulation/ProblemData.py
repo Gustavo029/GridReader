@@ -78,7 +78,7 @@ class BoundaryConditions:
 		# 	self.neumannBoundaries[variable] = list()
 		# 	self.dirichletBoundaries[variable] = list()
 		# 	self.boundaryConditions[variable] = list()
-		# 	self.initialValues[variable] = np.repeat( self.boundaryConditionsDict[variable]["InitialValue"], self.problemData.grid.vertices.size )
+		# 	self.initialValues[variable] = np.repeat( self.boundaryConditionsDict[variable]["InitialValue"], self.problemData.grid.numberOfVertices )
 
 		# 	for boundary in self.problemData.grid.boundaries:
 		# 		if self.boundaryConditionsDict[variable][boundary.name]["condition"] == PyEFVLib.Neumann:
@@ -100,7 +100,7 @@ class BoundaryConditions:
 		self.neumannBoundaries   = { variable : [] for variable in variables }
 		self.dirichletBoundaries = { variable : [] for variable in variables }
 		self.boundaryConditions  = [ dict() for boundary in self.problemData.grid.boundaries ]
-		self.initialValues		 = { variable : np.repeat( self.boundaryConditionsDict[variable]["InitialValue"], self.problemData.grid.vertices.size ) for variable in variables }
+		self.initialValues		 = { variable : np.repeat( self.boundaryConditionsDict[variable]["InitialValue"], self.problemData.grid.numberOfVertices ) for variable in variables }
 		
 		bcHandle = 0
 		for idx, boundary in enumerate(self.problemData.grid.boundaries):

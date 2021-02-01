@@ -41,11 +41,11 @@ class GeomechanicsSolver(Solver):
 
 
 	def init(self):
-		self.gravityVector = -9.81 * np.array([0.0, 1.0, 0.0])[:self.dimension]
+		self.gravityVector = -9.81 * np.array([0.0, 0.0, 0.0])[:self.dimension]
 
-		self.prevPressureField = self.problemData.initialValues["pressure"]				# p_old
-		self.pressureField = np.repeat(0.0, self.grid.vertices.size)					# p_k
-		self.nextPressureField = np.repeat(0.0, self.grid.vertices.size)				# p_(k+1)
+		self.prevPressureField = self.problemData.initialValues["pressure"].copy()		# p_old
+		self.pressureField = np.repeat(0.0, self.grid.numberOfVertices)					# p_k
+		self.nextPressureField = np.repeat(0.0, self.grid.numberOfVertices)				# p_(k+1)
 
 		self.prevDisplacements = np.repeat(0.0, self.dimension*self.numberOfVertices)	# u_old
 		self.displacements = np.repeat(0.0, self.dimension*self.numberOfVertices)		# u_k
@@ -72,7 +72,8 @@ class GeomechanicsSolver(Solver):
 			self.iterativeDifference = 2*self.tolerance
 
 			# Iterative Loop
-			while self.iterativeDifference >= self.tolerance:
+			self.iteration = 0
+			while self.iteration <= 1 or (self.iterativeDifference >= self.tolerance):
 				self.assembleMassVector()
 				self.solveIterativePressureField()
 				self.assembleGeoVector()
@@ -198,7 +199,8 @@ class GeomechanicsSolver(Solver):
 
 		# Pressure gradient term
 		for innerFace in element.innerFaces:
-			coefficientsVector = -(permeability/viscosity)*np.matmul( np.transpose(innerFace.area.getCoordinates()[:self.dimension]), innerFace.globalDerivatives )
+			area = innerFace.area.getCoordinates()[:self.dimension]
+			coefficientsVector = -(permeability/viscosity)*np.matmul( area.T, innerFace.globalDerivatives )
 	
 			backwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][0]
 			forwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][1]
@@ -217,7 +219,8 @@ class GeomechanicsSolver(Solver):
 
 		for innerFace in element.innerFaces:
 			shapeFunctionValues = element.shape.innerFaceShapeFunctionValues[innerFace.local]
-			coefficients = -(biotCoefficient/self.timeStep) * np.array([sj*Ni for Ni in shapeFunctionValues for sj in innerFace.area.getCoordinates()[:self.dimension]])
+			area = innerFace.area.getCoordinates()[:self.dimension]
+			coefficients = -(biotCoefficient/self.timeStep) * np.array([sj*Ni for sj in area for Ni in shapeFunctionValues])
 
 			backwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][0]
 			forwardVertexLocal = element.shape.innerFaceNeighborVertices[innerFace.local][1]
@@ -386,7 +389,12 @@ class GeomechanicsSolver(Solver):
 			prevElementDisplacements = np.array([ self.prevDisplacements[m+c*self.numberOfVertices] for c in range(self.dimension) for m in range(element.vertices.size) ])
 			elementDisplacements 	 = np.array([ self.displacements[m+c*self.numberOfVertices] for c in range(self.dimension) for m in range(element.vertices.size) ])
 
-			coefficients = np.matmul(localMatrixA, prevElementPressures) + np.matmul(localMatrixR, elementPressures) + np.matmul(localMatrixQ, prevElementDisplacements - elementDisplacements) + np.matmul(localMatrixG, self.gravityVector)
+			coefficients = ( 
+				np.matmul(localMatrixA, prevElementPressures) + 
+				np.matmul(localMatrixR, elementPressures) + 
+				np.matmul(localMatrixQ, prevElementDisplacements - elementDisplacements) + 
+				np.matmul(localMatrixG, self.gravityVector) 
+			)
 
 			local = 0
 			for vertex in element.vertices:
@@ -419,7 +427,8 @@ class GeomechanicsSolver(Solver):
 			for vertex in element.vertices:
 				subelementVolume = element.subelementVolumes[local]
 				for c in range(self.dimension):
-					self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = density * subelementVolume * self.gravityVector[c] + coefficients[local+c*self.dimension]
+					# self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = -density * subelementVolume * self.gravityVector[c]
+					self.geoIndependentVector[ vertex.handle+c*self.numberOfVertices ] = -density * subelementVolume * self.gravityVector[c] + coefficients[local+c*self.dimension]
 
 				local += 1
 
@@ -497,12 +506,11 @@ if __name__ == "__main__":
 		    {
 		        "PoissonsRatio"			: 2.0e-1,			# ν
 		        "ShearModulus"			: 6.0e+9,			# G
-		        "SolidCompressibility"	: 2.777777e-11,		# cs
+		        "SolidCompressibility"	: 0.0,				# cs
 		        "Porosity"				: 1.9e-1,			# Φ
 		        "Permeability"			: 1.9e-15,			# k
 		        "FluidCompressibility"	: 3.0303e-10,		# cf
 		        "Viscosity"				: 1.0e-03,			# μ
-		        # "BiotCoefficient"		: 7.77778e-1,		# α
 		        "SolidDensity"			: 2.7e+3,			# ρs
 		        "FluidDensity"			: 1.0e+3			# ρf
 		    }
@@ -532,7 +540,7 @@ if __name__ == "__main__":
 			    "West":  { "condition": PyEFVLib.Neumann,   "type": PyEFVLib.Constant, "value": 0.0 },
 			    "East":  { "condition": PyEFVLib.Neumann,   "type": PyEFVLib.Constant, "value": 0.0 },
 			    "South": { "condition": PyEFVLib.Dirichlet, "type": PyEFVLib.Constant, "value": 0.0 },
-			    "North": { "condition": PyEFVLib.Neumann,   "type": PyEFVLib.Constant, "value": -490.0 }
+			    "North": { "condition": PyEFVLib.Neumann,   "type": PyEFVLib.Constant, "value": -1e4 }
 			},
 		}),
 	)

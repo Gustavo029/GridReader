@@ -206,9 +206,9 @@ class GeomechanicsFixedStressSolverUtils:
 
 class GeomechanicsFixedStressSolver(PyEFVLib.Solver, GeomechanicsFixedStressSolverUtils):
 	def init(self):
-		self.prevPressureField = self.problemData.initialValues["pressure"]
-		self.pressureField     = self.problemData.initialValues["pressure"]
-		self.nextPressureField = self.problemData.initialValues["pressure"]
+		self.prevPressureField = self.problemData.initialValues["pressure"].copy()
+		self.pressureField     = self.problemData.initialValues["pressure"].copy()
+		self.nextPressureField = self.problemData.initialValues["pressure"].copy()
 
 		self.prevDisplacements = np.repeat(0.0, self.dimension * self.numberOfVertices)
 		self.displacements 	   = np.repeat(0.0, self.dimension * self.numberOfVertices)
@@ -345,9 +345,6 @@ class GeomechanicsFixedStressSolver(PyEFVLib.Solver, GeomechanicsFixedStressSolv
 		self.inverseGeoMatrix = sparse.linalg.inv( self.geoMatrix )
 
 	def assembleMassIndependentVector(self):
-		# Nota, eu acho que tem alguma coisa errada com um termo ali no vetor independente
-		# O relatório diz 		Ap_o + Rp_k - Rp_o + Qu_o - Qu_k + Gg
-		# Eu acho que devia ser Ap_o + Rp_k -      + Qu_o - Qu_k + Gg
 		self.massIndependentVector = np.zeros(self.numberOfVertices)
 
 		for element in self.grid.elements:
@@ -493,8 +490,8 @@ if __name__ == "__main__":
 		boundaryConditions = PyEFVLib.BoundaryConditions({
 			"pressure": {
 				"InitialValue": 0.0,
-				"West":	 { "condition" : PyEFVLib.Dirichlet, "type" : PyEFVLib.Constant,"value" : 20.0 },
-				"East":	 { "condition" : PyEFVLib.Dirichlet, "type" : PyEFVLib.Constant,"value" : 50.0 },
+				"West":	 { "condition" : PyEFVLib.Neumann,   "type" : PyEFVLib.Constant,"value" : 0.0 },
+				"East":	 { "condition" : PyEFVLib.Neumann,   "type" : PyEFVLib.Constant,"value" : 0.0 },
 				"South": { "condition" : PyEFVLib.Neumann,   "type" : PyEFVLib.Constant,"value" : 0.0 },
 				"North": { "condition" : PyEFVLib.Neumann,   "type" : PyEFVLib.Constant,"value" : 0.0 },
 			},
